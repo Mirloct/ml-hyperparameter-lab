@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Isolation Forest · Laboratorio de hiperparámetros</title>
+  <meta name="description" content="Laboratorio interactivo para entender cómo cada hiperparámetro de Isolation Forest (n_estimators, max_samples, contamination, max_features, bootstrap, random_state) cambia el resultado de un detector de anomalías.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M16 5v22M6 13h20M6 20h10' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='23' r='2.6' fill='%23eb6834'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../../assets/css/site.css">
+  <link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../../index.html" aria-label="ML Hyperparameter Lab, inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M16 5v22M6 13h20M6 20h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="24" cy="23" r="2.6" fill="var(--s2)"/></svg>
+      <span>ML Hyperparameter Lab</span>
+    </a>
+    <nav class="nav" aria-label="Secciones">
+      <a href="#lessons">Escenarios</a>
+      <a href="#lab">Laboratorio</a>
+      <a href="#guide">Cómo leer</a>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Cambiar tema claro/oscuro" data-tip="Cambiar entre tema claro y oscuro">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Detección de anomalías · Laboratorio 01</p>
+      <h1>Isolation Forest:<br><span class="grad">mueve un hiperparámetro y mira qué cambia</span></h1>
+      <p class="lead">El modelo se entrena <b>en tu navegador</b>, en tiempo real. Cada control tiene su definición, su rol dentro del algoritmo y su efecto medible en las métricas y gráficas. Pasa el cursor por cualquier control, tile o gráfica para leer qué significa.</p>
+      <div class="ideas">
+        <article class="card idea"><span class="num">1</span><h3>Las anomalías son pocas y diferentes</h3><p>No modelamos lo "normal": buscamos lo que <i>se aleja</i> de la masa de datos.</p></article>
+        <article class="card idea"><span class="num">2</span><h3>Se aíslan con cortes al azar</h3><p>Cada árbol elige una variable y un valor de corte aleatorios hasta dejar cada punto solo en su celda.</p></article>
+        <article class="card idea"><span class="num">3</span><h3>Menos cortes ⇒ más anómalo</h3><p>Score <span class="mono formula">s(x) = 2<sup>−E[h(x)] / c(ψ)</sup></span>. Cerca de 1 = anómalo · cerca de 0.5 = sin estructura · cerca de 0 = normal.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ESCENARIOS -->
+  <section class="wrap section" id="lessons">
+    <div class="section-head">
+      <h2>Escenarios guiados</h2>
+      <p>Cada uno carga datos y parámetros para que veas un concepto concreto. Elige uno, sigue los pasos y compara.</p>
+    </div>
+    <div class="lesson-chips" id="lessonChips" role="tablist" aria-label="Escenarios guiados"></div>
+    <div class="card lesson-body" id="lessonBody" aria-live="polite"></div>
+  </section>
+
+  <!-- LABORATORIO -->
+  <section class="wrap section" id="lab">
+    <div class="lab">
+      <!-- Controles -->
+      <aside class="lab-controls" id="controls" aria-label="Controles del modelo">
+        <div class="mini-metrics" id="miniMetrics" aria-live="polite"></div>
+
+        <section class="cbox">
+          <h3><span class="step">1</span> Datos</h3>
+          <div class="ds-list" id="dsList" role="radiogroup" aria-label="Conjunto de datos"></div>
+          <p class="ds-blurb" id="dsBlurb"></p>
+          <div class="row-ctl">
+            <label for="fracRange" data-tip="<span class='tip-h'>% real de anomalías</span>Cuántas de las observaciones son anomalías de verdad en este conjunto sintético. Es el valor que <b>contamination</b> intenta aproximar.">Anomalías reales: <b id="fracVal">6%</b></label>
+            <input type="range" id="fracRange" min="1" max="15" step="0.5" value="6">
+          </div>
+          <div class="row-ctl inline">
+            <label for="nSel">Puntos</label>
+            <select id="nSel"><option>200</option><option selected>500</option><option>1000</option></select>
+            <button class="btn sm" id="resampleBtn" type="button" data-tip="Genera otra muestra de datos del mismo tipo (nueva semilla de datos, no del modelo).">↻ Nueva muestra</button>
+          </div>
+        </section>
+
+        <section class="cbox">
+          <h3><span class="step">2</span> Hiperparámetros</h3>
+          <p class="hint">Señala un control para ver su definición · haz clic para abrir la explicación completa.</p>
+          <div id="paramList"></div>
+        </section>
+      </aside>
+
+      <!-- Mapa principal -->
+      <div class="card map-card" id="card-map">
+        <div class="map-toolbar">
+          <div class="seg" role="group" aria-label="Vista">
+            <button type="button" id="viewMap" aria-pressed="true" data-tip="<span class='tip-h'>Mapa de scores</span>Colorea todo el plano según el score que el bosque asignaría a un punto en esa posición. La línea punteada es el umbral de decisión.">Mapa de scores</button>
+            <button type="button" id="viewTree" aria-pressed="false" data-tip="<span class='tip-h'>Un árbol por dentro</span>Muestra las particiones aleatorias de un solo árbol y cómo se aísla el punto seleccionado.">Un árbol</button>
+          </div>
+          <div class="toggles">
+            <button class="btn sm" type="button" id="togHeat" aria-pressed="true" data-tip="Muestra u oculta el fondo de color con el score en cada posición.">Mapa de calor</button>
+            <button class="btn sm" type="button" id="togLabels" aria-pressed="true" data-tip="<span class='tip-h'>Etiquetas reales</span>El modelo nunca ve las etiquetas: solo se usan para colorear y evaluar. Ocúltalas para ver el problema como lo vería el modelo.">Etiquetas reales</button>
+          </div>
+        </div>
+
+        <div class="map-body">
+          <div class="canvas-wrap">
+            <canvas id="mapCanvas" aria-label="Mapa de puntos y scores de anomalía. Usa las tablas y tiles para ver resultados numéricos." role="img"></canvas>
+          </div>
+          <div class="map-side">
+            <div class="legend" aria-label="Leyenda">
+              <div><span class="lg-dot" style="background:var(--ink-2)"></span>Normal (real)</div>
+              <div><span class="lg-dot big" style="background:var(--s2)"></span>Anómalo (real)</div>
+              <div><span class="lg-ring"></span>Marcado por el modelo</div>
+              <div><span class="lg-dash"></span>Umbral de decisión</div>
+            </div>
+            <div class="colorbar-wrap" id="cbWrap">
+              <div class="cb-title">Score de anomalía</div>
+              <div class="colorbar" id="colorbar"><i id="cbThr"></i></div>
+              <div class="cb-scale"><span>0.30<br><small>normal</small></span><span>0.5</span><span>0.85<br><small>anómalo</small></span></div>
+            </div>
+            <div class="sel-box" id="selBox"></div>
+          </div>
+        </div>
+
+        <div class="map-foot">
+          <div class="foot-left">
+            <span class="foot-label">Clic en el mapa:</span>
+            <div class="seg" role="group" aria-label="Acción al hacer clic">
+              <button type="button" data-mode="select" aria-pressed="true">Seleccionar</button>
+              <button type="button" data-mode="normal" aria-pressed="false" data-tip="Agrega un punto normal (etiqueta real = 0) donde hagas clic. El bosque se reentrena al instante.">+ Normal</button>
+              <button type="button" data-mode="anomaly" aria-pressed="false" data-tip="Agrega un punto anómalo (etiqueta real = 1) donde hagas clic. Útil para construir tu propio caso.">+ Anómalo</button>
+            </div>
+            <button class="btn sm" type="button" id="undoBtn" data-tip="Quita los puntos que agregaste con clic.">Quitar agregados</button>
+          </div>
+          <div class="tree-ctl" id="treeCtl" hidden>
+            <div class="tc-row">
+              <span class="foot-label">Árbol</span>
+              <button class="btn sm" type="button" id="treePrev" aria-label="Árbol anterior">◀</button>
+              <b id="treeNum">1 / 100</b>
+              <button class="btn sm" type="button" id="treeNext" aria-label="Árbol siguiente">▶</button>
+            </div>
+            <div class="tc-row">
+              <label class="foot-label" for="depthRange" data-tip="<span class='tip-h'>Niveles de corte visibles</span>Cuántos niveles del árbol se dibujan. Con 0 no hay cortes; cada nivel añade una ronda de particiones aleatorias.">Niveles de corte visibles: <b id="depthVal">3</b></label>
+              <input type="range" id="depthRange" min="0" max="8" step="1" value="3">
+            </div>
+            <p class="tree-note" id="treeNote"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Métricas -->
+      <section class="metrics-wrap" id="metrics" aria-label="Métricas">
+        <div class="metrics-head">
+          <h3>Resultados</h3>
+          <div class="mh-actions">
+            <button class="btn sm" type="button" id="baseBtn" data-tip="<span class='tip-h'>Fijar referencia</span>Guarda los resultados actuales. Después verás cuánto cambia cada métrica (▲/▼) respecto a esa referencia al modificar un hiperparámetro.">📌 Fijar referencia</button>
+            <button class="btn sm" type="button" id="baseClear" hidden>Quitar referencia</button>
+          </div>
+        </div>
+        <div class="tile-groups">
+          <div class="tile-group">
+            <div class="tg-title" data-tip="Miden qué tan bien <b>ordena</b> el modelo (anomalías arriba). No dependen del umbral ni de <code>contamination</code>.">Calidad del ranking <small>sin umbral</small></div>
+            <div class="tiles" id="tilesRank"></div>
+          </div>
+          <div class="tile-group">
+            <div class="tg-title" data-tip="Miden qué tan bien <b>decide</b> el modelo una vez fijado el umbral. Dependen directamente de <code>contamination</code>.">Calidad de la decisión <small>con umbral</small></div>
+            <div class="tiles" id="tilesDec"></div>
+          </div>
+        </div>
+        <div class="reading" id="reading" aria-live="polite"></div>
+      </section>
+
+      <!-- Gráficas -->
+      <div class="charts" id="charts">
+        <article class="card chart-card" id="card-hist">
+          <header><h4>Distribución de scores</h4><p>¿Cuánto se separan normales y anómalos? La línea vertical es el umbral.</p></header>
+          <div class="legend-inline"><span><i style="background:var(--s1)"></i>Normales (real)</span><span><i style="background:var(--s2)"></i>Anómalos (real)</span></div>
+          <div class="chart" id="histChart" data-chart-tip></div>
+        </article>
+
+        <article class="card chart-card" id="card-roc">
+          <header><h4>Curvas ROC y Precisión–Recall</h4><p>Cada punto de la curva es un umbral posible. El punto <span class="ochip"></span> naranja es el umbral actual.</p></header>
+          <div class="two">
+            <div><div class="mini-title" id="rocTitle">ROC</div><div class="chart" id="rocChart" data-chart-tip></div></div>
+            <div><div class="mini-title" id="prTitle">Precisión–Recall</div><div class="chart" id="prChart" data-chart-tip></div></div>
+          </div>
+        </article>
+
+        <article class="card chart-card wide" id="card-sweep">
+          <header>
+            <h4 id="sweepTitle">Barrido del hiperparámetro</h4>
+            <p id="sweepDesc">Reentrena el modelo con distintos valores del hiperparámetro activo (varias semillas cada uno) para ver su efecto real y su variabilidad.</p>
+          </header>
+          <div class="sweep-ctl">
+            <div class="seg" id="sweepMetricSeg" role="group" aria-label="Métrica del barrido">
+              <button type="button" data-m="auc" aria-pressed="false" data-tip="ROC-AUC promedio entre semillas.">ROC-AUC</button>
+              <button type="button" data-m="ap" aria-pressed="true" data-tip="Precisión media (área bajo la curva PR).">AP</button>
+              <button type="button" data-m="f1" aria-pressed="false" data-tip="F1 con el umbral que define contamination (en 'auto', umbral 0.5).">F1</button>
+            </div>
+            <span class="sweep-hint" id="sweepHint"></span>
+          </div>
+          <div class="chart" id="sweepChart" data-chart-tip></div>
+          <details class="table-view"><summary>Ver como tabla</summary><div id="sweepTable"></div></details>
+        </article>
+
+        <article class="card chart-card" id="card-anat">
+          <header><h4>Anatomía de un punto</h4><p>¿En qué profundidad se aísla el punto seleccionado, árbol por árbol?</p></header>
+          <div class="quick"><span>Elegir:</span>
+            <button class="btn sm" type="button" data-pick="top">Más anómalo</button>
+            <button class="btn sm" type="button" data-pick="border">Cerca del umbral</button>
+            <button class="btn sm" type="button" data-pick="median">Típico</button>
+          </div>
+          <div class="chart" id="anatChart" data-chart-tip></div>
+          <div class="formula-box" id="formulaBox"></div>
+        </article>
+
+        <article class="card chart-card" id="card-conv">
+          <header><h4>Convergencia con el nº de árboles</h4><p>Score de tres puntos a medida que se promedian más árboles. Si las líneas aún se mueven, faltan árboles.</p></header>
+          <div class="chart" id="convChart" data-chart-tip></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- GUÍA -->
+  <section class="wrap section" id="guide">
+    <div class="section-head">
+      <h2>Cómo leer los indicadores</h2>
+      <p>Por qué estas métricas y estas gráficas, y qué hacer cuando no tienes etiquetas.</p>
+    </div>
+    <div class="guide-grid">
+      <article class="card g-card">
+        <h4>Ranking vs. decisión</h4>
+        <p>Un detector de anomalías hace <b>dos cosas</b>: (1) asigna un score a cada punto y (2) elige un umbral. Son problemas distintos y se evalúan con métricas distintas.</p>
+        <ul>
+          <li><b>ROC-AUC</b> y <b>AP</b> evalúan solo el paso 1. Son las que debes mirar para comparar hiperparámetros del <i>bosque</i>.</li>
+          <li><b>Precisión, Recall, F1</b> evalúan el paso 2 y dependen de <code>contamination</code>.</li>
+        </ul>
+      </article>
+      <article class="card g-card">
+        <h4>¿Por qué AP además de ROC-AUC?</h4>
+        <p>Con pocas anomalías (5 % o menos) el ROC-AUC puede verse casi perfecto aunque haya muchas falsas alarmas, porque el eje FPR se divide entre muchísimos normales. La <b>curva PR</b> y el <b>AP</b> castigan esas falsas alarmas y son más honestos en este contexto.</p>
+      </article>
+      <article class="card g-card">
+        <h4>Histograma de scores</h4>
+        <p>Es la gráfica que <b>sí puedes usar sin etiquetas</b>. Una buena configuración produce una masa grande de scores bajos y una cola clara y separada de scores altos. Si todo se concentra cerca de 0.5, el modelo no encuentra estructura.</p>
+      </article>
+      <article class="card g-card">
+        <h4>Barrido y semillas</h4>
+        <p>Una sola ejecución puede engañar por el azar. El barrido repite cada configuración con varias semillas y muestra <b>media y dispersión</b>: la práctica correcta al comparar hiperparámetros de modelos aleatorios.</p>
+      </article>
+      <article class="card g-card">
+        <h4>Sin etiquetas (el caso real)</h4>
+        <p>En producción no conoces la etiqueta real. Alternativas: revisar manualmente el <i>top-k</i> de scores, medir la <b>estabilidad</b> del ranking entre semillas, fijar el umbral con conocimiento del dominio, o validar con anomalías inyectadas sintéticamente.</p>
+      </article>
+      <article class="card g-card">
+        <h4>Limitaciones de Isolation Forest</h4>
+        <ul>
+          <li>Cortes paralelos a los ejes: dificultad con regiones huecas rodeadas de datos (anillo).</li>
+          <li>En alta dimensión con mucho ruido, las variables irrelevantes diluyen el aislamiento.</li>
+          <li>Anomalías agrupadas pueden enmascararse (masking).</li>
+          <li>Variantes: <i>Extended Isolation Forest</i> (cortes oblicuos).</li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="card refs">
+      <h4>Referencias</h4>
+      <ol>
+        <li>Liu, F. T., Ting, K. M., Zhou, Z.-H. (2008). <i>Isolation Forest.</i> IEEE ICDM. — el paper original.</li>
+        <li>Liu, F. T., Ting, K. M., Zhou, Z.-H. (2012). <i>Isolation-based anomaly detection.</i> ACM TKDD 6(1).</li>
+        <li>Hariri, S., Kind, M. C., Brunner, R. J. (2019). <i>Extended Isolation Forest.</i> IEEE TKDE.</li>
+        <li>scikit-learn: <code>sklearn.ensemble.IsolationForest</code> (las convenciones de este laboratorio siguen esta API).</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div><b>ML Hyperparameter Lab</b> · Isolation Forest implementado desde cero en JavaScript; sin servidor, sin datos que salgan de tu navegador.</div>
+    <div><a href="../../index.html">← Más algoritmos</a></div>
+  </div>
+</footer>
+
+<script src="../../assets/js/common.js"></script>
+<script src="iforest.js"></script>
+<script src="../../assets/js/core/metrics.js"></script>
+<script src="../../assets/js/core/datasets.js"></script>
+<script src="content.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
