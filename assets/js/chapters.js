@@ -1,4 +1,6 @@
-/* Estructura de lectura: navegación por capítulos, términos con definición, preguntas de comprobación y casos reales. */
+/* Estructura de lectura COMPARTIDA por todos los laboratorios: navegación por capítulos, términos del
+ * glosario, resúmenes, preguntas de comprobación y casos reales.
+ * Cada laboratorio define ML.GLOSSARY, ML.CHECKS, ML.TAKEAWAYS y ML.CASES (o las variantes ML.IF_*). */
 (function () {
   'use strict';
   const ML = window.MLLab;
@@ -18,7 +20,7 @@
   /* ---------- Preguntas de comprobación ---------- */
   function checks() {
     $$('[data-checks]').forEach((host) => {
-      const list = ML.IF_CHECKS[host.dataset.checks] || [];
+      const list = (ML.CHECKS || ML.IF_CHECKS || {})[host.dataset.checks] || [];
       if (!list.length) { host.remove(); return; }
       host.innerHTML = `<h3><span class="chk-i" aria-hidden="true">?</span> Comprueba lo aprendido</h3>` +
         list.map((c) => `<details class="check"><summary>${c.q}</summary><div class="answer">${c.a}</div></details>`).join('');
@@ -28,7 +30,7 @@
   /* ---------- Resumen de capítulo ---------- */
   function takeaways() {
     $$('[data-takeaways]').forEach((host) => {
-      const list = (ML.IF_TAKEAWAYS || {})[host.dataset.takeaways] || [];
+      const list = (ML.TAKEAWAYS || ML.IF_TAKEAWAYS || {})[host.dataset.takeaways] || [];
       host.innerHTML = `<h3>En resumen</h3><ul>${list.map((t) => `<li>${t}</li>`).join('')}</ul>`;
     });
   }
@@ -36,10 +38,10 @@
   /* ---------- Casos reales ---------- */
   function cases() {
     const tabs = $('#casesTabs'), body = $('#caseBody');
-    if (!tabs || !ML.IF_CASES) return;
-    tabs.innerHTML = ML.IF_CASES.map((c, i) => `<button type="button" role="tab" data-id="${c.id}" aria-selected="${i === 0}"><small>${c.kicker}</small>${c.name}</button>`).join('');
+    if (!tabs || !(ML.CASES || ML.IF_CASES)) return;
+    tabs.innerHTML = (ML.CASES || ML.IF_CASES).map((c, i) => `<button type="button" role="tab" data-id="${c.id}" aria-selected="${i === 0}"><small>${c.kicker}</small>${c.name}</button>`).join('');
     const show = (id) => {
-      const c = ML.IF_CASES.find((x) => x.id === id);
+      const c = (ML.CASES || ML.IF_CASES).find((x) => x.id === id);
       $$('button', tabs).forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === id)));
       body.innerHTML = `<header><span class="chip">${c.kicker}</span><h3>${c.name}</h3></header>
         <div class="case-grid">
@@ -51,7 +53,7 @@
       $('[data-sim]', body).addEventListener('click', (e) => ML.applyLesson(e.currentTarget.dataset.sim));
     };
     $$('button', tabs).forEach((b) => b.addEventListener('click', () => show(b.dataset.id)));
-    show(ML.IF_CASES[0].id);
+    show((ML.CASES || ML.IF_CASES)[0].id);
   }
 
   /* ---------- Navegación por capítulos: capítulo activo y progreso de lectura ---------- */
@@ -65,7 +67,7 @@
   }
 
   /* ---------- Tabla de tunabilidad (capítulo 4) ---------- */
-  function tunability() {
+  function tunability() {  // solo existe en el laboratorio de Isolation Forest
     const host = $('#tuneTable'), LS = ML.landscapes, TU = ML.tuning;
     if (!host || !LS || !TU) return;
     const rows = Object.keys(LS).map((id) => { const r = TU.reference(LS[id]); return { id, def: r.defaultAP, best: r.oracleAP, gain: r.oracleAP - r.defaultAP, cfg: r.oracle }; }).sort((a, b) => b.gain - a.gain);

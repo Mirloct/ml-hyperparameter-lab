@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autoencoder Variacional (VAE) · Laboratorio de hiperparámetros</title>
+  <meta name="description" content="Curso interactivo sobre el Autoencoder Variacional: la idea, el efecto de β y la dimensión latente, el colapso posterior, cómo evaluar sin etiquetas, optimización de hiperparámetros y casos reales.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M7 8v16M12 11v10M25 8v16M20 11v10' stroke='white' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23eb6834'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../../assets/css/site.css">
+  <link rel="stylesheet" href="../../assets/css/lab.css">
+  <link rel="stylesheet" href="../../assets/css/chapters.css">
+  <link rel="stylesheet" href="vae.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../../index.html" aria-label="ML Hyperparameter Lab, inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M16 5v22M6 13h20M6 20h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="24" cy="23" r="2.6" fill="var(--s2)"/></svg>
+      <span>ML Hyperparameter Lab</span>
+    </a>
+    <span class="crumb">VAE</span>
+    <nav class="nav" aria-label="Sitio">
+      <a href="../../index.html">Algoritmos</a>
+      <a href="../isolation-forest/">Isolation Forest</a>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Cambiar tema claro/oscuro" data-tip="Cambiar entre tema claro y oscuro">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<nav class="chapnav" aria-label="Capítulos">
+  <div class="wrap">
+    <ol id="chapList">
+      <li><a href="#ch1" data-ch="ch1"><b>1</b><span>La idea</span></a></li>
+      <li><a href="#ch2" data-ch="ch2"><b>2</b><span>Laboratorio</span></a></li>
+      <li><a href="#ch3" data-ch="ch3"><b>3</b><span>Evaluar</span></a></li>
+      <li><a href="#ch4" data-ch="ch4"><b>4</b><span>Optimizar</span></a></li>
+      <li><a href="#ch5" data-ch="ch5"><b>5</b><span>Casos reales</span></a></li>
+      <li><a href="#ch6" data-ch="ch6"><b>6</b><span>Checklist</span></a></li>
+      <li><a href="#refs" data-ch="refs"><b>★</b><span>Bibliografía</span></a></li>
+    </ol>
+  </div>
+  <div class="progress" aria-hidden="true"><i id="progBar"></i></div>
+</nav>
+
+<main>
+  <!-- ============================ PORTADA ============================ -->
+  <section class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Deep Learning · Autosupervisado · Laboratorio 02</p>
+        <h1>Autoencoder Variacional: comprimir, <span class="grad">y volver a imaginar</span></h1>
+        <p class="lead">Una red que aprende a describir cada observación con unos pocos números y a reconstruirla desde ahí. Aquí se entrena <b>de verdad, en tu navegador</b>, con gradientes calculados a mano: verás bajar la pérdida <span data-term="epoca">época</span> a época y qué le hace cada <span data-term="hiperparametro">hiperparámetro</span>.</p>
+        <div class="hero-cta"><a class="btn primary" href="#ch1">Empezar por la idea →</a><a class="btn" href="#ch2">Ir directo al laboratorio</a></div>
+      </div>
+      <figure class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 380 240" role="presentation">
+          <rect x="1" y="1" width="378" height="238" rx="18" fill="var(--surface)" stroke="var(--border-strong)"/>
+          <g fill="none" stroke="var(--axis)" stroke-width="1.5"><path d="M46 52v136M78 72v96M110 96v48M270 96v48M302 72v96M334 52v136"/></g>
+          <g stroke="var(--accent)" stroke-width="1" opacity=".45"><path d="M46 80L78 92M46 120L78 120M46 160L78 148M78 92L110 110M78 148L110 130M270 110L302 92M270 130L302 148M302 92L334 80M302 120L334 120M302 148L334 160"/></g>
+          <rect x="144" y="86" width="92" height="68" rx="12" fill="var(--accent-wash)" stroke="var(--accent)" stroke-width="1.8"/>
+          <g fill="var(--s2)"><circle cx="166" cy="118" r="4"/><circle cx="190" cy="106" r="4"/><circle cx="212" cy="128" r="4"/><circle cx="178" cy="136" r="4"/></g>
+          <text x="190" y="172" font-size="11" fill="var(--ink-2)" text-anchor="middle" font-family="var(--font)">espacio latente z</text>
+          <g font-size="11" fill="var(--ink-2)" font-family="var(--font)" text-anchor="middle"><text x="78" y="205">encoder</text><text x="302" y="205">decoder</text><text x="46" y="38">x</text><text x="334" y="38">x̂</text></g>
+        </svg>
+      </figure>
+    </div>
+    <div class="wrap">
+      <h2 class="route-title">Ruta de lectura</h2>
+      <ol class="route">
+        <li><a href="#ch1"><span class="r-n">1</span><b>La idea</b><small>Comprimir con incertidumbre y reconstruir · ≈ 5 min</small></a></li>
+        <li><a href="#ch2"><span class="r-n">2</span><b>Laboratorio</b><small>Entrena y mueve cada hiperparámetro · ≈ 14 min</small></a></li>
+        <li><a href="#ch3"><span class="r-n">3</span><b>Evaluar</b><small>Qué mirar cuando no hay etiquetas · ≈ 8 min</small></a></li>
+        <li><a href="#ch4"><span class="r-n">4</span><b>Optimizar</b><small>β y latent_dim interactúan · ≈ 8 min</small></a></li>
+        <li><a href="#ch5"><span class="r-n">5</span><b>Casos reales</b><small>Inspección, salud, datos sintéticos · ≈ 5 min</small></a></li>
+        <li><a href="#ch6"><span class="r-n">6</span><b>Checklist</b><small>Flujo, errores y límites · ≈ 4 min</small></a></li>
+      </ol>
+      <p class="route-note">¿Vienes de <a href="../isolation-forest/">Isolation Forest</a>? Allí los hiperparámetros cambiaban <i>cómo se buscan</i> las anomalías; aquí cambian <b>qué representa</b> el modelo, y uno mal puesto puede dejarlo sin representar nada.</p>
+    </div>
+  </section>
+
+  <!-- ============================ CAPÍTULO 1 ============================ -->
+  <section class="chapter wrap" id="ch1" aria-labelledby="ch1-t">
+    <header class="ch-head"><span class="ch-num">1</span><div><p class="ch-kicker">Capítulo 1 · ≈ 5 min</p><h2 id="ch1-t">La idea: comprimir con incertidumbre</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>explicar qué hace un <span data-term="autoencoder">autoencoder</span> y qué le añade la parte <b>variacional</b>;</li>
+      <li>leer la pérdida del <span data-term="vae">VAE</span> como dos fuerzas en tensión: <span data-term="reconstruccion">reconstrucción</span> y <span data-term="kl">KL</span>;</li>
+      <li>decir para qué sirve el <span data-term="reparam">truco de reparametrización</span>.</li>
+    </ul></div>
+
+    <div class="ideas">
+      <article class="card idea"><span class="num">1</span><h3>Comprimir y reconstruir</h3><p>El <span data-term="encoder">encoder</span> reduce cada observación a unos pocos números; el <span data-term="decoder">decoder</span> intenta recuperarla. El cuello de botella obliga a quedarse con lo esencial.</p></article>
+      <article class="card idea"><span class="num">2</span><h3>Pero con incertidumbre</h3><p>No produce un punto, sino una <b>distribución</b> (media μ y desviación σ). Cada observación ocupa una región difusa, así que el <span data-term="latente">espacio latente</span> queda continuo y sin huecos.</p></article>
+      <article class="card idea"><span class="num">3</span><h3>Y ordenado por el KL</h3><p>Un segundo término empuja esas distribuciones hacia una gaussiana estándar. Gracias a eso se puede <b>muestrear</b> del espacio y generar datos nuevos.</p></article>
+    </div>
+
+    <div class="card formula-card">
+      <h3>La pérdida: dos fuerzas en tensión</h3>
+      <p class="formula-big">L = reconstrucción + β · KL</p>
+      <div class="force-grid">
+        <div class="force f-rec"><h4>Reconstrucción</h4><p>«Que la salida se parezca a la entrada.» Empuja a <b>usar</b> el código latente para guardar todo lo posible.</p><span class="f-tag">quiere fidelidad</span></div>
+        <div class="force f-vs">⟷</div>
+        <div class="force f-kl"><h4>KL contra el <span data-term="prior">prior</span></h4><p>«Que el código se parezca a una gaussiana estándar.» Empuja a <b>no usar</b> el código más de lo necesario.</p><span class="f-tag">quiere orden</span></div>
+      </div>
+      <p>Ese equilibrio es el corazón del modelo, y <b>β</b> es el mando que lo mueve. Sin el KL tendrías un autoencoder normal; con demasiado KL el modelo deja de usar el latente por completo. Ambos extremos los verás en el capítulo 2.</p>
+      <p class="fine">La suma con β = 1 es el <span data-term="elbo">ELBO</span> con signo cambiado (<a class="cite" href="#ref-kingma2014">Kingma &amp; Welling, 2014</a>). Se mide en <span data-term="nats">nats</span>.</p>
+    </div>
+
+    <div class="card formula-card">
+      <h3>El truco de reparametrización</h3>
+      <p>Hay un problema: si z se <i>sortea</i> de una distribución, no se puede derivar a través del sorteo y la red no puede entrenarse. La solución es escribir el azar aparte:</p>
+      <p class="formula-big">z = μ + σ · ε,  con ε ~ N(0, 1)</p>
+      <p>Así el azar (ε) entra como una constante en cada paso y el gradiente puede fluir hasta μ y σ. Es la idea que hizo entrenable al VAE (<a class="cite" href="#ref-kingma2014">Kingma &amp; Welling, 2014</a>; <a class="cite" href="#ref-rezende2014">Rezende et al., 2014</a>).</p>
+      <p class="fine">En este laboratorio el modelo se entrena con <span data-term="adam">Adam</span> y los gradientes están derivados a mano, sin librerías: puedes leer las 200 líneas de <code>vae.js</code>.</p>
+    </div>
+
+    <p class="fine">Para profundizar: la revisión de conjunto de <a class="cite" href="#ref-kingma2019">Kingma &amp; Welling (2019)</a> y los capítulos 14 y 20 de <a class="cite" href="#ref-goodfellow2016">Goodfellow et al. (2016)</a>.</p>
+    <div class="takeaways" data-takeaways="ch1"></div>
+    <div class="checks" data-checks="ch1"></div>
+    <footer class="ch-next"><a class="btn primary" href="#ch2">Siguiente: 2 · Laboratorio →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 2 ============================ -->
+  <section class="chapter wrap" id="ch2" aria-labelledby="ch2-t">
+    <header class="ch-head"><span class="ch-num">2</span><div><p class="ch-kicker">Capítulo 2 · ≈ 14 min</p><h2 id="ch2-t">Laboratorio: entrena y mueve los hiperparámetros</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>reconocer el <span data-term="colapso">colapso posterior</span> y saber qué hacer;</li>
+      <li>decidir la <b>dimensión latente</b> mirando cuántas dimensiones quedan activas;</li>
+      <li>distinguir los hiperparámetros de <b>modelo</b> (β, latente, capacidad) de los de <b>optimización</b> (η, épocas, lote).</li>
+    </ul></div>
+
+    <div class="sub-head" id="lessons">
+      <h3>Empieza por un escenario guiado <span class="opt">(recomendado)</span></h3>
+      <p>Cada uno entrena un modelo con una configuración concreta para que veas un fenómeno. Después explora libremente.</p>
+    </div>
+    <div class="lesson-chips" id="lessonChips" role="tablist" aria-label="Escenarios guiados"></div>
+    <div class="card lesson-body" id="lessonBody" aria-live="polite"></div>
+
+    <div class="lab" id="lab">
+      <aside class="lab-controls" aria-label="Controles">
+        <div class="mini-metrics" id="miniMetrics" aria-live="polite"></div>
+        <section class="cbox">
+          <h3><span class="step">1</span> Datos</h3>
+          <div class="ds-list" id="dsList" role="radiogroup" aria-label="Conjunto de datos"></div>
+          <p class="ds-blurb" id="dsBlurb"></p>
+          <div class="row-ctl inline"><label for="nSel">Muestras</label>
+            <select id="nSel"><option>200</option><option selected>400</option><option>800</option></select>
+            <label for="anomSel" data-tip="Añade observaciones de un tipo que el modelo nunca vio, para usar el error de reconstrucción como detector.">Anomalías</label>
+            <select id="anomSel"><option value="0">ninguna</option><option value="0.06">6 %</option><option value="0.12">12 %</option></select></div>
+          <div class="row-ctl"><label for="noiseRange" data-tip="Ruido añadido a cada píxel. Simula sensores imperfectos: con mucho ruido, reconstruir perfectamente deja de ser posible (ni deseable).">Ruido por píxel: <b id="noiseVal">2%</b></label>
+            <input type="range" id="noiseRange" min="0" max="15" step="1" value="2"></div>
+        </section>
+        <section class="cbox">
+          <h3><span class="step">2</span> Hiperparámetros</h3>
+          <p class="hint">Cambiar cualquiera <b>reinicia el entrenamiento</b>: el modelo se vuelve a construir desde cero.</p>
+          <div id="paramList"></div>
+        </section>
+      </aside>
+
+      <div class="card map-card" id="card-imgs">
+        <div class="map-toolbar"><h3 class="mc-title">Datos y reconstrucciones</h3>
+          <span class="fine">Arriba, observaciones reales; abajo, lo que el modelo devuelve tras comprimirlas.</span></div>
+        <p class="axes-note" data-tip="<span class='tip-h'>¿Qué son estas imágenes?</span>Cada casilla es <b>una observación</b>: una imagen de 8×8 = <b>64 variables</b>, una por píxel, con valor entre 0 (fondo) y 1 (trazo). No hay PCA ni reducción previa: el modelo recibe los 64 números tal cual.">
+          <b>Cada casilla es una observación</b>: una imagen de 8×8, es decir <b>64 variables</b> (una por píxel, de 0 a 1). Se generan a partir de unos pocos <b>factores</b> conocidos (posición, tamaño…), lo que permite comprobar después si el modelo los descubre. <span class="an">Sin PCA: el modelo recibe los 64 números tal cual.</span></p>
+        <div class="grid-block"><h4>Originales</h4><canvas id="origGrid" role="img" aria-label="Observaciones originales"></canvas></div>
+        <div class="grid-block"><h4>Reconstruidas por el modelo</h4><canvas id="reconGrid" role="img" aria-label="Reconstrucciones del modelo"></canvas></div>
+      </div>
+
+      <section class="metrics-wrap" id="metrics" aria-label="Métricas">
+        <div class="metrics-head"><h3>Resultados</h3></div>
+        <div class="tile-groups vae-groups">
+          <div class="tile-group"><div class="tg-title" data-tip="Las dos mitades de la pérdida y cuánto del latente se usa. <b>No necesitan etiquetas</b>: es lo que tendrías en un caso real.">Ajuste del modelo <span class="lbl free">no necesita etiquetas</span></div><div class="tiles" id="tiles-fit"></div></div>
+          <div class="tile-group"><div class="tg-title" data-tip="Solo se puede calcular porque los datos son sintéticos y conocemos los factores que los generaron. Con datos reales no tendrías esto.">Desenredo <span class="lbl need">solo con datos sintéticos</span></div><div class="tiles" id="tiles-fact"></div></div>
+          <div class="tile-group" id="anomGroup" hidden><div class="tg-title" data-tip="Usando el error de reconstrucción como score de anomalía. Necesita etiquetas de anomalía.">Detección de anomalías <span class="lbl need">necesita etiquetas</span></div><div class="tiles" id="tiles-anom"></div></div>
+        </div>
+        <div class="reading" id="reading" aria-live="polite"></div>
+      </section>
+
+      <div class="charts" id="charts">
+        <article class="card chart-card wide" id="card-curve">
+          <header><h4>Curva de entrenamiento</h4><p>Las dos partes de la pérdida, época a época. La reconstrucción (azul, eje izquierdo) debería bajar; el KL (naranja, eje derecho) cuenta cuánta información usa el latente.</p></header>
+          <div class="chart" id="curveChart" data-chart-tip></div>
+        </article>
+
+        <article class="card chart-card" id="card-kl">
+          <header><h4>KL por dimensión latente</h4><p>Cuánta información transporta cada dimensión. Las barras grises están <b>apagadas</b>: el modelo no las usa.</p></header>
+          <div class="chart" id="klChart" data-chart-tip></div>
+        </article>
+
+        <article class="card chart-card" id="card-latent">
+          <header><h4>Espacio latente</h4><p>Cada punto es una observación, colocada en su código μ. El color muestra un factor real: si varía de forma ordenada, el modelo lo capturó.</p></header>
+          <div class="ctl-row"><label>Ejes <select id="dimX"></select> <select id="dimY"></select></label><label>Color <select id="colorBy"></select></label></div>
+          <div class="chart" id="latentChart" data-chart-tip></div>
+        </article>
+
+        <article class="card chart-card" id="card-gen">
+          <header><h4>Mapa generativo</h4><p>Qué produce el decoder al recorrer el espacio latente. Aquí se ve si el modelo es <span data-term="generativo">generativo</span> de verdad: puntos vecinos deben dar imágenes parecidas y plausibles.</p></header>
+          <div class="chart gen-wrap"><canvas id="genGrid" role="img" aria-label="Imágenes generadas recorriendo el espacio latente"></canvas></div>
+          <p class="fine" id="genAxes"></p>
+        </article>
+
+        <article class="card chart-card" id="card-sel">
+          <header><h4>Una observación de cerca</h4><p>Clic en el espacio latente para elegir otra.</p></header>
+          <div class="quick"><span>Elegir:</span>
+            <button class="btn sm" type="button" data-pick="worst">Peor reconstruida</button>
+            <button class="btn sm" type="button" data-pick="median">Típica</button>
+            <button class="btn sm" type="button" data-pick="best">Mejor reconstruida</button></div>
+          <canvas id="selGrid" class="sel-grid" role="img" aria-label="Original y reconstrucción de la observación seleccionada"></canvas>
+          <div class="sel-info" id="selInfo"></div>
+        </article>
+
+        <article class="card chart-card" id="card-fact">
+          <header><h4>¿Descubrió los factores reales?</h4><p>Para cada factor que generó los datos, con qué fuerza se alinea con alguna dimensión latente.</p></header>
+          <div id="factTable"></div>
+        </article>
+
+        <article class="card chart-card" id="card-anom" hidden>
+          <header><h4>Detección de anomalías</h4><p>El error de reconstrucción como score: lo que el modelo no sabe reconstruir es candidato a anomalía.</p></header>
+          <div class="legend-inline"><span><i style="background:var(--s1)"></i>Normales</span><span><i style="background:var(--s2)"></i>Anómalas</span></div>
+          <div class="chart" id="errChart" data-chart-tip></div>
+          <div class="insight" id="anomRead"></div>
+        </article>
+
+        <article class="card chart-card wide" id="card-sweep">
+          <header><h4 id="sweepTitle">Barrido</h4><p>Entrena varios modelos <b>desde cero</b> con distintos valores del hiperparámetro activo (2 semillas cada uno). Tarda unos segundos.</p></header>
+          <div class="sweep-ctl"><div class="seg" id="sweepMetricSeg" role="group" aria-label="Métrica del barrido"></div><span class="sweep-hint" id="sweepHint"></span></div>
+          <div class="chart" id="sweepChart" data-chart-tip></div>
+          <div class="insight" id="sweepInsight" aria-live="polite"></div>
+          <details class="table-view"><summary>Ver como tabla</summary><div id="sweepTable"></div></details>
+        </article>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <h4>El fallo que hay que saber reconocer: el colapso posterior</h4>
+      <p>Si el <b>KL cae a cero</b>, el modelo ha dejado de usar el espacio latente: el encoder devuelve siempre el prior y el decoder reconstruye siempre la misma imagen promedio. Lo tramposo es que <b>la pérdida puede parecer razonable</b> y el modelo sigue produciendo scores y reconstrucciones. Se diagnostica con las <b>dimensiones activas</b>, no con la pérdida. Causas: β demasiado alto, red demasiado pequeña, o un decoder tan potente que no necesita el código (<a class="cite" href="#ref-bowman2016">Bowman et al., 2016</a>; <a class="cite" href="#ref-lucas2019">Lucas et al., 2019</a>). Remedios: <b>recocido del KL</b> —también en variante cíclica (<a class="cite" href="#ref-anfu2019">Fu et al., 2019</a>)—, bajar β, o <i>free bits</i> (<a class="cite" href="#ref-kingma2016">Kingma et al., 2016</a>).</p>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch2"></div>
+    <div class="checks" data-checks="ch2"></div>
+    <footer class="ch-next"><a class="btn" href="#ch1">← 1 · La idea</a><a class="btn primary" href="#ch3">Siguiente: 3 · Evaluar →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 3 ============================ -->
+  <section class="chapter wrap" id="ch3" aria-labelledby="ch3-t">
+    <header class="ch-head"><span class="ch-num">3</span><div><p class="ch-kicker">Capítulo 3 · ≈ 8 min</p><h2 id="ch3-t">Evaluar: ¿cómo sé si mi VAE es bueno?</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>explicar por qué la pérdida total <b>sola</b> no sirve para comparar modelos;</li>
+      <li>elegir indicadores según lo que quieras del modelo (reconstruir, generar, representar, detectar);</li>
+      <li>saber qué se puede medir <b>sin etiquetas</b> y qué no.</li>
+    </ul></div>
+
+    <div class="callout">
+      <h4>La trampa número uno</h4>
+      <p>Dos modelos con distinto <b>β</b> <u>no</u> son comparables por su pérdida: cada uno está minimizando una función distinta. Y aun con el mismo β, un modelo puede bajar la pérdida total <b>subiendo la reconstrucción y hundiendo el KL</b> — es decir, empeorando la representación. Mira siempre las <b>dos partes por separado</b> y cuántas dimensiones quedan activas.</p>
+    </div>
+
+    <h3 class="sub-title">Qué indicador usar y cuándo</h3>
+    <div class="ind-legend" role="note"><span><i class="sw-y"></i><b>Sí</b> · solo en validación: necesitas casos confirmados</span><span><i class="sw-n"></i><b>No</b> · disponibles en producción</span><span><i class="sw-s"></i><b>Parcial</b> · solo con datos sintéticos o revisión humana</span></div>
+    <div class="table-wrap"><table class="ind-table">
+      <thead><tr><th>Indicador</th><th>¿Necesita etiquetas?</th><th>Qué mide</th><th>Úsalo cuando…</th><th>Cuidado con…</th></tr></thead>
+      <tbody>
+        <tr><td><b>Error de reconstrucción</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Cuánta información se pierde al comprimir y reconstruir</td><td>Siempre: es la mitad de la pérdida</td><td>Baja siempre que subas la capacidad; por sí sola premia al autoencoder sin regularizar</td></tr>
+        <tr><td><b>KL</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Información que el latente transporta</td><td>Siempre, junto a la anterior</td><td>Ni cero (<span data-term="colapso">colapso</span>) ni enorme (latente disperso)</td></tr>
+        <tr><td><b>Dimensiones activas</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Cuántas dimensiones tienen KL &gt; 0.01 nats</td><td>Para elegir <code>latent_dim</code> y diagnosticar colapso</td><td>El umbral 0.01 es una convención, no una ley</td></tr>
+        <tr><td><b>−ELBO</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Cota de la verosimilitud: reconstrucción + KL</td><td>Comparar modelos <b>con el mismo β</b> y los mismos datos</td><td>Es una cota, no la verosimilitud; no comparable entre β distintos</td></tr>
+        <tr><td><b>Inspección visual</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Reconstrucciones y muestras del prior</td><td>Siempre; detecta colapso de un vistazo</td><td>Subjetiva; las muestras de un VAE son borrosas por naturaleza</td></tr>
+        <tr><td><b>Estabilidad entre semillas</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Cuánto cambia el resultado solo por el azar</td><td>Antes de afirmar que una configuración es mejor</td><td>El latente cambia de <b>orientación</b> con la semilla: compara métricas, no coordenadas</td></tr>
+        <tr class="sep"><td><b>Alineación con factores</b></td><td class="lab-s"><span class="lab-pill">Parcial</span></td><td>Si cada factor real vive en su propia dimensión (<span data-term="desenredo">desenredo</span>)</td><td>Datos sintéticos con factores conocidos</td><td>En datos reales <b>no existe</b>; las métricas de desenredo son discutidas (<a class="cite" href="#ref-locatello2019">Locatello et al., 2019</a>)</td></tr>
+        <tr><td><b>Utilidad posterior</b></td><td class="lab-s"><span class="lab-pill">Parcial</span></td><td>Si la representación mejora el modelo que la usa después</td><td>El VAE es un paso intermedio</td><td>Requiere etiquetas para esa tarea posterior</td></tr>
+        <tr><td><b>ROC-AUC / AP</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Calidad del error de reconstrucción como detector; existe también la <i>probabilidad de reconstrucción</i> (<a class="cite" href="#ref-an2015">An &amp; Cho, 2015</a>)</td><td>Detección de anomalías con casos confirmados</td><td>Con anomalías raras usa AP, no ROC-AUC (<a class="cite" href="#ref-saito2015">Saito &amp; Rehmsmeier, 2015</a>)</td></tr>
+      </tbody></table></div>
+
+    <div class="two-col">
+      <article class="card g-card"><h4>Un VAE bueno ¿para qué?</h4><p>No hay un "mejor VAE" en abstracto. Según el objetivo, miras cosas distintas:</p>
+        <ul><li><b>Reconstruir / detectar defectos</b> → error de reconstrucción bajo. β pequeño.</li>
+          <li><b>Generar datos nuevos</b> → muestras del prior plausibles. β ≥ 1 y sin huecos.</li>
+          <li><b>Representar para otro modelo</b> → rendimiento de ese modelo posterior.</li>
+          <li><b>Interpretar factores</b> → desenredo, con todas las reservas del párrafo siguiente.</li></ul></article>
+      <article class="card g-card"><h4>Sobre el desenredo, con honestidad</h4>
+        <p>β &gt; 1 favorece que cada factor caiga en su propia dimensión (<a class="cite" href="#ref-higgins2017">Higgins et al., 2017</a>), y en este laboratorio se ve. Pero un estudio a gran escala mostró que <b>el desenredo no supervisado es imposible sin supuestos previos</b>, que las métricas discrepan entre sí y que el resultado depende tanto de la semilla como del hiperparámetro (<a class="cite" href="#ref-locatello2019">Locatello et al., 2019</a>). Trátalo como una propiedad deseable que hay que <b>verificar</b>, no como algo que β garantice.</p></article>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch3"></div>
+    <div class="checks" data-checks="ch3"></div>
+    <footer class="ch-next"><a class="btn" href="#ch2">← 2 · Laboratorio</a><a class="btn primary" href="#ch4">Siguiente: 4 · Optimizar →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 4 ============================ -->
+  <section class="chapter wrap" id="ch4" aria-labelledby="ch4-t">
+    <header class="ch-head"><span class="ch-num">4</span><div><p class="ch-kicker">Capítulo 4 · ≈ 8 min</p><h2 id="ch4-t">Optimizar: β y latent_dim no se ajustan por separado</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>ver por qué dos hiperparámetros que <b>interactúan</b> exigen buscarlos juntos;</li>
+      <li>ordenar el ajuste: primero optimización, después modelo;</li>
+      <li>aplicar el mismo criterio de <b>qué no optimizar</b> que en los demás modelos del sitio.</li>
+    </ul></div>
+
+    <h3 class="sub-title">4.1 Interacción: la cuadrícula β × latent_dim</h3>
+    <p class="lead-s">Cada casilla es un modelo entrenado desde cero. Si los hiperparámetros fueran independientes, la mejor fila y la mejor columna se cruzarían en el óptimo; aquí no pasa eso: con β alto <b>da igual cuántas dimensiones des</b>, porque se apagan todas.</p>
+    <div class="grid-ctl card">
+      <label>Métrica <select id="hmMetric"><option value="rec">Reconstrucción (menor mejor)</option><option value="active">Dimensiones activas</option><option value="dis">Alineación con factores</option></select></label>
+      <label>Datos <select id="hmDs"></select></label>
+      <label>Épocas <select id="hmEp"><option value="25">25 (rápido)</option><option value="50" selected>50</option><option value="80">80 (lento)</option></select></label>
+      <button class="btn primary" type="button" id="hmRun">Calcular cuadrícula</button>
+      <span class="fine" id="hmState">Entrena 30 modelos: unos 10–30 segundos.</span>
+    </div>
+    <div class="card chart-card"><div class="chart" id="hmChart" data-chart-tip></div><div class="insight" id="hmRead"></div></div>
+
+    <h3 class="sub-title">4.2 En qué orden ajustar</h3>
+    <div class="order-steps">
+      <div class="card os"><span class="os-n">1</span><h4>Optimización primero</h4><p><b>learning_rate</b> y épocas. Si el entrenamiento no converge, cualquier otra configuración parecerá mala. Barre η en escala logarítmica.</p></div>
+      <div class="card os"><span class="os-n">2</span><h4>Capacidad</h4><p><b>hidden_units</b> y profundidad. Sube hasta que la reconstrucción se aplane; si la red es muy pequeña, el modelo colapsa aunque β esté bien.</p></div>
+      <div class="card os"><span class="os-n">3</span><h4>Modelo, juntos</h4><p><b>β</b> y <b>latent_dim</b> a la vez, en cuadrícula o con búsqueda aleatoria. Nunca uno tras otro: interactúan.</p></div>
+      <div class="card os"><span class="os-n">4</span><h4>Rescate</h4><p>Si aparece colapso, <b>recocido del KL</b> antes de tocar nada más.</p></div>
+    </div>
+
+    <h3 class="sub-title">4.3 Qué <u>no</u> optimizar</h3>
+    <p class="lead-s">La misma clasificación que usamos en todos los modelos del sitio: <b>fíjalo</b>, <b>decídelo</b> o <b>solo reproducibilidad</b>.</p>
+    <div data-not-tune></div>
+
+    <h3 class="sub-title">4.4 Métodos y presupuesto</h3>
+    <div class="two-col">
+      <article class="card g-card"><h4>Qué cambia respecto a un modelo clásico</h4>
+        <ul><li>Cada evaluación es <b>cara</b> (entrenar una red entera), así que el número de pruebas es pequeño: aquí brillan la <span data-term="bayes">optimización bayesiana</span> y <b>Hyperband</b>, que descarta pronto las configuraciones malas usando pocas épocas (<a class="cite" href="#ref-li2018b">Li et al., 2018</a>).</li>
+          <li>Hay <b>más hiperparámetros</b> y muchos interactúan; la búsqueda aleatoria sigue siendo la referencia mínima (<a class="cite" href="#ref-bergstra2012b">Bergstra &amp; Bengio, 2012</a>).</li>
+          <li>La <b>varianza entre semillas</b> es mayor: compara siempre con al menos 3 repeticiones.</li>
+          <li>Las épocas son un <b>recurso</b> ideal para métodos de baja fidelidad: entrena 10 épocas a muchas configuraciones y solo sigue con las prometedoras.</li></ul>
+        <p class="fine">El capítulo 4 de <a href="../isolation-forest/#ch4">Isolation Forest</a> compara grid, random, bayesiana y successive halving con el mismo presupuesto; esos criterios se aplican igual aquí.</p></article>
+      <article class="card g-card"><h4>Ejemplo en Python (PyTorch + Optuna, <a class="cite" href="#ref-akiba2019b">Akiba et al., 2019</a>)</h4>
+<pre class="code"><code>import optuna
+
+def objective(trial):
+    beta    = trial.suggest_float("beta", 0.2, 8.0, log=True)
+    latent  = trial.suggest_int("latent_dim", 2, 32, log=True)
+    hidden  = trial.suggest_categorical("hidden", [64, 128, 256])
+    lr      = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+
+    model = VAE(latent_dim=latent, hidden=hidden)
+    for epoch in range(MAX_EPOCHS):
+        train_one_epoch(model, loader, lr=lr, beta=kl_warmup(beta, epoch))
+        val = evaluate(model, val_loader)          # rec + KL, con beta=1 para comparar
+        trial.report(val["loss"], epoch)
+        if trial.should_prune():                   # Hyperband descarta lo que no promete
+            raise optuna.TrialPruned()
+
+    if val["active_dims"] == 0:                    # colapso: configuración inservible
+        raise optuna.TrialPruned()
+    return val["loss"]
+
+study = optuna.create_study(direction="minimize",
+                            pruner=optuna.pruners.HyperbandPruner())
+study.optimize(objective, n_trials=40)</code></pre>
+        <p class="fine">Detalle importante: se <b>descarta explícitamente</b> el modelo colapsado. Sin esa comprobación, una búsqueda automática puede premiar configuraciones que no representan nada.</p></article>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch4"></div>
+    <div class="checks" data-checks="ch4"></div>
+    <footer class="ch-next"><a class="btn" href="#ch3">← 3 · Evaluar</a><a class="btn primary" href="#ch5">Siguiente: 5 · Casos reales →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 5 ============================ -->
+  <section class="chapter wrap" id="ch5" aria-labelledby="ch5-t">
+    <header class="ch-head"><span class="ch-num">5</span><div><p class="ch-kicker">Capítulo 5 · ≈ 5 min</p><h2 id="ch5-t">Casos de la vida real</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>ver cómo el <b>mismo</b> hiperparámetro se ajusta en direcciones opuestas según el objetivo;</li>
+      <li>traducir β y latent_dim a decisiones concretas de cada dominio;</li>
+      <li>anticipar la trampa típica de cada aplicación.</li>
+    </ul></div>
+    <p class="lead-s">Los datos del laboratorio son sintéticos; estos casos describen situaciones típicas de forma ilustrativa, no resultados medidos.</p>
+    <div class="case-tabs" id="casesTabs" role="tablist" aria-label="Casos"></div>
+    <article class="card case-body" id="caseBody" aria-live="polite"></article>
+    <div class="takeaways" data-takeaways="ch5"></div>
+    <div class="checks" data-checks="ch5"></div>
+    <footer class="ch-next"><a class="btn" href="#ch4">← 4 · Optimizar</a><a class="btn primary" href="#ch6">Siguiente: 6 · Checklist →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 6 ============================ -->
+  <section class="chapter wrap" id="ch6" aria-labelledby="ch6-t">
+    <header class="ch-head"><span class="ch-num">6</span><div><p class="ch-kicker">Capítulo 6 · ≈ 4 min</p><h2 id="ch6-t">Checklist, errores comunes y límites</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>seguir un flujo ordenado para entrenar y validar un VAE;</li>
+      <li>reconocer los errores más frecuentes;</li>
+      <li>saber cuándo un VAE <b>no</b> es la herramienta adecuada.</li>
+    </ul></div>
+    <div class="two-col">
+      <article class="card g-card"><h4>Flujo de trabajo recomendado</h4>
+        <ol class="steps">
+          <li><b>Define el objetivo</b>: ¿reconstruir, generar, representar o detectar? De ahí sale la dirección de β.</li>
+          <li><b>Normaliza</b> las entradas al rango que asume tu verosimilitud (aquí [0,1] con entropía cruzada).</li>
+          <li><b>Ajusta la tasa de aprendizaje</b> y comprueba que la curva baja.</li>
+          <li><b>Sube la capacidad</b> hasta que la reconstrucción se aplane.</li>
+          <li><b>Busca β y latent_dim juntos</b>, descartando configuraciones colapsadas.</li>
+          <li><b>Verifica</b>: dimensiones activas, reconstrucciones y muestras del prior a ojo.</li>
+          <li><b>Repite con 3+ semillas</b> antes de declarar un ganador.</li>
+          <li><b>Monitorea</b> el KL y la distribución del error tras desplegar.</li>
+        </ol></article>
+      <article class="card g-card"><h4>Errores comunes</h4>
+        <ul><li>Mirar solo la pérdida total y no darse cuenta del <b>colapso</b>.</li>
+          <li>Comparar modelos con <b>β distintos</b> por su pérdida.</li>
+          <li>Subir <code>latent_dim</code> esperando mejora cuando β ya apagó las dimensiones.</li>
+          <li>Interpretar las dimensiones latentes como variables con significado <b>sin verificarlo</b>.</li>
+          <li>Entrenar el detector de anomalías con datos <b>contaminados</b> de anomalías.</li>
+          <li>Culpar a la arquitectura de lo que era una tasa de aprendizaje mal puesta.</li>
+          <li>Esperar muestras nítidas: el VAE genera <b>borroso</b> por diseño del objetivo.</li></ul>
+        <h4 style="margin-top:14px">Límites del VAE</h4>
+        <ul><li>Muestras <b>borrosas</b> frente a modelos de difusión o GAN.</li>
+          <li>El <span data-term="colapso">colapso posterior</span> con decoders potentes.</li>
+          <li>El desenredo no está garantizado (<a class="cite" href="#ref-locatello2019">Locatello et al., 2019</a>).</li>
+          <li>En detección de anomalías, puede reconstruir <b>demasiado bien</b> lo que nunca vio si tiene demasiada capacidad.</li>
+          <li>Alternativas según el caso: autoencoder simple (más fiel), VQ-VAE (latente discreto, <a class="cite" href="#ref-oord2017">van den Oord et al., 2017</a>), difusión (mejor generación), o <a href="../isolation-forest/">Isolation Forest</a> si tus datos son tabulares y pequeños.</li></ul></article>
+    </div>
+    <div class="checks" data-checks="ch6"></div>
+    <footer class="ch-next"><a class="btn" href="#ch5">← 5 · Casos reales</a><a class="btn primary" href="#refs">Bibliografía ↓</a></footer>
+  </section>
+
+  <!-- ============================ BIBLIOGRAFÍA ============================ -->
+  <section class="chapter wrap" id="refs" aria-labelledby="refs-t">
+    <header class="ch-head"><span class="ch-num">★</span><div><p class="ch-kicker">Referencias</p><h2 id="refs-t">Bibliografía</h2></div></header>
+    <p class="lead-s"><b>✔</b> = ficha y contenido consultados en la fuente (texto completo o resumen oficial) al preparar este material. Datos menores como páginas o volumen conviene contrastarlos antes de una cita formal. Sin ✔: referencias estándar que no se consultaron directamente en esta revisión.</p>
+    <div class="card refs-card"><ol class="refs-list">
+      <li id="ref-kingma2014">Kingma, D. P., &amp; Welling, M. (2014). <i>Auto-Encoding Variational Bayes.</i> International Conference on Learning Representations (ICLR). <a href="https://arxiv.org/abs/1312.6114">arXiv:1312.6114</a></li>
+      <li id="ref-rezende2014">Rezende, D. J., Mohamed, S., &amp; Wierstra, D. (2014). <i>Stochastic backpropagation and approximate inference in deep generative models.</i> Proc. ICML (PMLR 32), 1278–1286.</li>
+      <li id="ref-higgins2017">✔ Higgins, I., Matthey, L., Pal, A., Burgess, C., Glorot, X., Botvinick, M., Mohamed, S., &amp; Lerchner, A. (2017). <i>β-VAE: Learning basic visual concepts with a constrained variational framework.</i> International Conference on Learning Representations (ICLR). <a href="https://openreview.net/forum?id=Sy2fzU9gl">openreview.net/forum?id=Sy2fzU9gl</a></li>
+      <li id="ref-bowman2016">✔ Bowman, S. R., Vilnis, L., Vinyals, O., Dai, A. M., Jozefowicz, R., &amp; Bengio, S. (2016). <i>Generating sentences from a continuous space.</i> Proc. CoNLL, 10–21. doi:10.18653/v1/K16-1002 — origen del <b>recocido del KL</b> contra el colapso posterior.</li>
+      <li id="ref-sonderby2016">Sønderby, C. K., Raiko, T., Maaløe, L., Sønderby, S. K., &amp; Winther, O. (2016). <i>Ladder variational autoencoders.</i> Advances in Neural Information Processing Systems 29 (NIPS) — introduce el <i>warm-up</i> determinista.</li>
+      <li id="ref-kingma2016">Kingma, D. P., Salimans, T., Jozefowicz, R., Chen, X., Sutskever, I., &amp; Welling, M. (2016). <i>Improved variational inference with inverse autoregressive flow.</i> Advances in Neural Information Processing Systems 29 (NIPS) — propone los <i>free bits</i>.</li>
+      <li id="ref-lucas2019">Lucas, J., Tucker, G., Grosse, R., &amp; Norouzi, M. (2019). <i>Don't blame the ELBO! A linear VAE perspective on posterior collapse.</i> Advances in Neural Information Processing Systems 32 (NeurIPS).</li>
+      <li id="ref-locatello2019">Locatello, F., Bauer, S., Lucic, M., Rätsch, G., Gelly, S., Schölkopf, B., &amp; Bachem, O. (2019). <i>Challenging common assumptions in the unsupervised learning of disentangled representations.</i> Proc. ICML (PMLR 97), 4114–4124. Premio al mejor artículo — el desenredo no supervisado es imposible sin supuestos previos.</li>
+      <li id="ref-anfu2019">Fu, H., Li, C., Liu, X., Gao, J., Çelikyilmaz, A., &amp; Carin, L. (2019). <i>Cyclical annealing schedule: A simple approach to mitigating KL vanishing.</i> Proc. NAACL-HLT, 240–250.</li>
+      <li id="ref-oord2017">van den Oord, A., Vinyals, O., &amp; Kavukcuoglu, K. (2017). <i>Neural discrete representation learning (VQ-VAE).</i> Advances in Neural Information Processing Systems 30 (NIPS).</li>
+      <li id="ref-an2015">An, J., &amp; Cho, S. (2015). <i>Variational autoencoder based anomaly detection using reconstruction probability.</i> SNU Data Mining Center, Technical Report.</li>
+      <li id="ref-kingma2019">Kingma, D. P., &amp; Welling, M. (2019). <i>An introduction to variational autoencoders.</i> Foundations and Trends in Machine Learning, 12(4), 307–392. <a href="https://arxiv.org/abs/1906.02691">arXiv:1906.02691</a> — la referencia de conjunto.</li>
+      <li id="ref-bergstra2012b">✔ Bergstra, J., &amp; Bengio, Y. (2012). <i>Random search for hyper-parameter optimization.</i> Journal of Machine Learning Research, 13, 281–305.</li>
+      <li id="ref-li2018b">✔ Li, L., Jamieson, K., DeSalvo, G., Rostamizadeh, A., &amp; Talwalkar, A. (2018). <i>Hyperband: A novel bandit-based approach to hyperparameter optimization.</i> Journal of Machine Learning Research, 18(185), 1–52.</li>
+      <li id="ref-akiba2019b">✔ Akiba, T., Sano, S., Yanase, T., Ohta, T., &amp; Koyama, M. (2019). <i>Optuna: A next-generation hyperparameter optimization framework.</i> Proc. ACM SIGKDD (KDD), 2623–2631. doi:10.1145/3292500.3330701</li>
+      <li id="ref-saito2015">✔ Saito, T., &amp; Rehmsmeier, M. (2015). <i>The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets.</i> PLoS ONE, 10(3), e0118432. doi:10.1371/journal.pone.0118432</li>
+      <li id="ref-goodfellow2016">Goodfellow, I., Bengio, Y., &amp; Courville, A. (2016). <i>Deep Learning.</i> MIT Press — capítulos 14 (autoencoders) y 20 (modelos generativos profundos).</li>
+    </ol></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div><b>ML Hyperparameter Lab</b> · VAE implementado desde cero en JavaScript (gradientes a mano, sin librerías); se entrena en tu navegador.</div>
+    <div><a href="../../index.html">← Más algoritmos</a> · <a href="#top">Volver arriba ↑</a></div>
+  </div>
+</footer>
+
+<script src="../../assets/js/common.js"></script>
+<script src="vae.js"></script>
+<script src="shapes.js"></script>
+<script src="../../assets/js/core/metrics.js"></script>
+<script src="../../assets/js/core/unsup.js"></script>
+<script src="../../assets/js/core/tuning-doc.js"></script>
+<script src="../isolation-forest/charts.js"></script>
+<script src="content.js"></script>
+<script src="vae-charts.js"></script>
+<script src="app.js"></script>
+<script src="grid.js"></script>
+<script src="../../assets/js/chapters.js"></script>
+</body>
+</html>

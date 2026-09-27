@@ -1,0 +1,61 @@
+/* Estilos específicos del laboratorio de VAE */
+
+/* Capítulo 1: las dos fuerzas de la pérdida */
+.force-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin: 14px 0 16px; }
+.force { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); }
+.force h4 { font-size: 0.98rem; margin-bottom: 6px; }
+.force p { margin: 0; font-size: 0.9rem; color: var(--ink-2); }
+.force.f-rec { border-top: 3px solid var(--s1); }
+.force.f-kl { border-top: 3px solid var(--s2); }
+.force.f-vs { border: 0; background: none; font-size: 1.6rem; color: var(--muted); padding: 0 4px; text-align: center; }
+.f-tag { display: inline-block; margin-top: 8px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--ink-2); }
+.f-rec .f-tag { color: var(--accent-ink); }
+.f-kl .f-tag { color: var(--s2); }
+
+/* Laboratorio: rejillas de imágenes */
+.mc-title { font-size: 1.05rem; }
+.grid-block { padding: 6px 16px 14px; }
+.grid-block h4 { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-2); margin-bottom: 8px; }
+#origGrid, #reconGrid, #genGrid { width: 100%; display: block; image-rendering: pixelated; }
+.gen-wrap { max-width: 460px; margin-inline: auto; }
+.sel-grid { width: 100%; max-width: 220px; display: block; margin: 4px auto 10px; image-rendering: pixelated; }
+.sel-info { font-size: 0.86rem; display: grid; gap: 3px; }
+.sel-info .kv { display: flex; justify-content: space-between; gap: 10px; }
+.sel-info .kv span { color: var(--ink-2); }
+.sel-info .mono { font-family: var(--mono); font-size: 0.8rem; }
+.ctl-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.84rem; color: var(--ink-2); margin-bottom: 6px; }
+.ctl-row select { margin-left: 4px; }
+.ep-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.train-state { font-size: 0.8rem; color: var(--accent-ink); font-weight: 600; }
+.vae-groups { grid-template-columns: 1.7fr 1fr 1.1fr; align-items: start; }
+.vae-groups .tiles { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+.vae-groups .tile .t-label { white-space: normal; line-height: 1.25; min-height: 2.4em; align-items: flex-start; }
+.vae-groups .tile .t-val { font-size: 1.5rem; }
+
+/* Tabla de factores */
+.fact-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.fact-table th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-2); padding: 6px 8px; border-bottom: 1px solid var(--border-strong); }
+.fact-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.fact-table td:last-child { width: 40%; }
+.cbar { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.cbar i { display: block; height: 100%; border-radius: 4px; }
+
+/* Capítulo 4: cuadrícula y orden de ajuste */
+.grid-ctl { padding: 14px 18px; display: flex; gap: 14px 20px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.grid-ctl label { font-size: 0.84rem; color: var(--ink-2); font-weight: 600; }
+.grid-ctl select { margin-left: 6px; }
+.order-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.os { padding: 16px 18px; position: relative; border-top: 3px solid var(--accent); }
+.os-n { position: absolute; top: 12px; right: 16px; font-size: 1.8rem; font-weight: 750; color: var(--surface-2); line-height: 1; }
+.os h4 { font-size: 0.98rem; margin-bottom: 6px; }
+.os p { margin: 0; font-size: 0.88rem; color: var(--ink-2); }
+
+@media (max-width: 1100px) {
+  .vae-groups { grid-template-columns: 1fr 1fr; }
+  .order-steps { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 760px) {
+  .force-grid { grid-template-columns: 1fr; }
+  .force.f-vs { transform: rotate(90deg); padding: 4px 0; }
+  .vae-groups, .order-steps { grid-template-columns: 1fr; }
+}

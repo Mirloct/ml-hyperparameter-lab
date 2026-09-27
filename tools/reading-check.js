@@ -12,17 +12,9 @@ const puppeteer = require('puppeteer-core');
 const url = process.argv[2] || 'http://localhost:8080/algorithms/isolation-forest/';
 const exe = process.env.BROWSER || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 
-// Conceptos que un alumno nuevo no conoce: [nombre, regex, capítulo donde debería introducirse a más tardar]
-const CONCEPTS = [
-  ['score de anomalía', /\bscore\b/i, 'ch1'], ['umbral', /\bumbral\b/i, 'ch1'], ['ensemble/bosque', /\b(ensemble|bosque)\b/i, 'ch1'],
-  ['hiperparámetro', /\bhiperpar[aá]metros?\b/i, 'ch2'], ['plateau', /\bplateau\b/i, 'ch2'], ['varianza', /\bvarianza\b/i, 'ch2'],
-  ['contamination', /\bcontamination\b/i, 'ch2'], ['masking', /\bmasking\b/i, 'ch2'], ['swamping', /\bswamping\b/i, 'ch2'],
-  ['ROC-AUC', /\bROC-AUC\b/, 'ch2'], ['AP', /\bAP\b/, 'ch2'], ['Precisión–Recall', /Precisi[oó]n[–-]Recall/, 'ch2'],
-  ['Precisión@k', /Precisi[oó]n@k/, 'ch2'], ['Jaccard', /\bJaccard\b/, 'ch2'], ['Mass-Volume', /Mass-Volume/, 'ch2'], ['kNN', /\bkNN\b/, 'ch2'],
-  ['grid search', /\bgrid\b/i, 'ch4'], ['random search', /\brandom search\b/i, 'ch4'], ['bayesiana', /\bbayesiana\b/i, 'ch4'],
-  ['Successive Halving', /\b(successive halving|halving)\b/i, 'ch4'], ['tunabilidad', /\btunabilidad\b/i, 'ch4'], ['fuga (leakage)', /\bfugas? de informaci[oó]n\b/i, 'ch4'],
-];
+// Los conceptos los declara cada laboratorio en ML.READING_CONCEPTS = [nombre, subcadena, capítulo].
 const fail = [], warn = [], ok = [];
+const NO_CONCEPTS = 'la página no declara ML.READING_CONCEPTS: no se comprueba "definición antes de uso"';
 const rec = (arr, m) => arr.push(m);
 
 (async () => {
@@ -50,8 +42,17 @@ const rec = (arr, m) => arr.push(m);
   });
 
   /* 2. Definición antes de uso */
+  const CONCEPTS = await p.evaluate(() => window.MLLab.READING_CONCEPTS || []);
+  if (!CONCEPTS.length) rec(warn, NO_CONCEPTS);
   const report = await p.evaluate((CONCEPTS0) => {
-    const CONCEPTS = CONCEPTS0.map(([name, src, flags, byCh]) => [name, new RegExp(src, flags), byCh]);
+    // Coincidencia por palabra: la raíz declarada admite sufijos de flexión (plural, género),
+    // salvo en siglas cortas como «AP», donde el límite es estricto para no casar con «aprende».
+    const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const W = '[\\p{L}\\p{N}_]';
+    const CONCEPTS = CONCEPTS0.map(([name, sub, byCh]) => {
+      const s = String(sub), tail = s.length <= 3 ? '(?!' + W + ')' : W + '{0,3}(?!' + W + ')';
+      return [name, new RegExp('(^|(?!' + W + ').)' + esc(s) + tail, 'iu'), byCh];
+    });
     const main = document.querySelector('main');
     const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
     const nodes = []; let n;
@@ -63,9 +64,9 @@ const rec = (arr, m) => arr.push(m);
       const defined = new Set();
       let first = null, firstIntro = null;
       for (const t of nodes) {
-        if (!rx.test(t.nodeValue)) continue;
+        if (!rx.test(' ' + t.nodeValue)) continue;
         const el = t.parentElement;
-        if (el.closest('.refs-list')) continue;
+        if (el.closest('.refs-list, svg, [aria-hidden="true"], .chapnav, .route')) continue;   // bibliografía, ilustraciones y navegación no cuentan
         const intro = introduced(el);
         if (!first) first = { ch: chOf(el), intro, text: t.nodeValue.trim().slice(0, 70), tag: el.tagName };
         if (intro && !firstIntro) firstIntro = { ch: chOf(el) };
@@ -73,7 +74,7 @@ const rec = (arr, m) => arr.push(m);
       res.push({ name, byCh, first, firstIntro });
     }
     return res;
-  }, CONCEPTS.map((c) => [c[0], c[1].source, c[1].flags, c[2]]));
+  }, CONCEPTS);
   const chIdx = (id) => ['top', 'ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'refs'].indexOf(id);
   report.forEach((r) => {
     if (!r.first) { rec(warn, `«${r.name}»: no aparece en el texto`); return; }
@@ -90,7 +91,7 @@ const rec = (arr, m) => arr.push(m);
     const badTerms = [...document.querySelectorAll('[data-term]')].filter((e) => !e.dataset.tip && !e.getAttribute('data-tip')).map((e) => e.dataset.term);
     const heads = [...document.querySelectorAll('main h1, main h2, main h3, main h4')].map((h) => +h.tagName[1]);
     let jumps = 0; const at = []; const hs = [...document.querySelectorAll('main h1, main h2, main h3, main h4')]; for (let i = 1; i < heads.length; i++) if (heads[i] - heads[i - 1] > 1) { jumps++; at.push(hs[i - 1].textContent.trim().slice(0, 30) + ' → ' + hs[i].textContent.trim().slice(0, 30)); }
-    const emptyCharts = [...document.querySelectorAll('.chart')].filter((c) => !c.innerHTML.trim()).map((c) => c.id);
+    const emptyCharts = [...document.querySelectorAll('.chart')].filter((c) => !c.innerHTML.trim() && !c.closest('[hidden]')).map((c) => c.id);
     return { badCites, unusedRefs, badTerms, jumps, at, emptyCharts, nCites: document.querySelectorAll('a.cite').length, nRefs: document.querySelectorAll('.refs-list li').length };
   });
   integ.badCites.length ? rec(fail, `Citas sin referencia: ${integ.badCites}`) : rec(ok, `Las ${integ.nCites} citas apuntan a la bibliografía`);

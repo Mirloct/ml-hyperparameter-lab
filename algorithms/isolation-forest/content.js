@@ -6,6 +6,17 @@
   const cite = (id, txt) => `<a class="cite" href="#ref-${id}">${txt}</a>`;
   ML.cite = cite;
 
+  /* Conceptos que comprueba tools/reading-check.js (definición antes del primer uso). */
+  ML.READING_CONCEPTS = [
+    ['score de anomalía', 'score', 'ch1'], ['umbral', 'umbral', 'ch1'], ['ensemble', 'bosque', 'ch1'], ['anomalía', 'anomalía', 'ch1'],
+    ['hiperparámetro', 'hiperparámetro', 'top'], ['plateau', 'plateau', 'ch2'], ['varianza', 'varianza', 'ch2'],
+    ['contamination', 'contamination', 'ch2'], ['masking', 'masking', 'ch2'], ['swamping', 'swamping', 'ch2'],
+    ['ROC-AUC', 'ROC-AUC', 'ch2'], ['AP', 'AP', 'ch2'], ['Precisión@k', 'Precisión@k', 'ch2'],
+    ['Jaccard', 'Jaccard', 'ch2'], ['Mass-Volume', 'Mass-Volume', 'ch2'], ['kNN', 'kNN', 'ch2'],
+    ['grid search', 'grid', 'ch4'], ['random search', 'random search', 'ch4'], ['bayesiana', 'bayesiana', 'ch4'],
+    ['Successive Halving', 'halving', 'ch4'], ['tunabilidad', 'tunabilidad', 'ch4'], ['leakage', 'fugas de informaci', 'ch4'],
+  ];
+
   /* =====================================================================
    *  Hiperparámetros
    * ===================================================================== */

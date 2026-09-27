@@ -1,7 +1,7 @@
 {
   "name": "ml-hyperparameter-lab",
   "version": "0.1.0",
-  "description": "Laboratorio visual e interactivo para entender el efecto de los hiperparámetros de algoritmos de Machine Learning.",
+  "description": "Laboratorios interactivos para entender el efecto de los hiperparámetros en modelos de Machine Learning y Deep Learning.",
   "private": true,
   "license": "MIT",
   "scripts": {
@@ -9,6 +9,7 @@
     "serve": "node tools/serve.js",
     "build:landscape": "node tools/build-landscape.js",
     "check:reading": "node tools/reading-check.js",
-    "e2e": "node tools/e2e.js"
+    "e2e": "node tools/e2e.js",
+    "e2e:vae": "node tools/e2e-vae.js"
   }
 }
