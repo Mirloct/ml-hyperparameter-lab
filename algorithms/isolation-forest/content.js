@@ -104,6 +104,21 @@
     },
   ];
 
+  /* Estándar compartido del capítulo "Optimizar" (ver assets/js/core/tuning-doc.js). */
+  ML.TUNING_DOC = {
+    notTune: [
+      { code: 'n_estimators', kind: 'fix',
+        why: 'Más árboles solo reducen el <b>ruido</b> del promedio (≈ 1/√T) con rendimientos decrecientes; no corrigen el sesgo del modelo. Pasado el <b>plateau</b>, subirlo cuesta tiempo y memoria sin ganar nada medible.',
+        instead: 'súbelo hasta que el AP y la estabilidad dejen de moverse en el <b>Barrido</b> y déjalo ahí (100–300). Úsalo como <i>recurso</i> en Successive Halving, no como hiperparámetro (' + cite('probst2018', 'Probst &amp; Boulesteix, 2018') + ').' },
+      { code: 'contamination', kind: 'decide',
+        why: 'No cambia el bosque ni el ranking: <b>solo mueve el umbral</b>. Ajustarlo para maximizar F1 con pocas anomalías etiquetadas produce un valor que no se sostiene en producción, donde la prevalencia real casi nunca se conoce (' + cite('perini2023', 'Perini et al., 2023') + ').',
+        instead: 'fíjalo por la <b>capacidad de revisión</b> del equipo (cuántas alertas se pueden atender) y por el costo relativo de un falso positivo frente a un falso negativo.' },
+      { code: 'random_state', kind: 'repro',
+        why: 'Elegir la semilla que da la mejor métrica es <b>sobreajustar al azar</b>: esa ventaja no existe en datos nuevos.',
+        instead: 'fíjala para poder reproducir y auditar, y <b>varíala</b> (3–5 valores) para reportar media ± desviación y medir la estabilidad.' },
+    ],
+  };
+
   /* =====================================================================
    *  Métricas (tiles)
    * ===================================================================== */

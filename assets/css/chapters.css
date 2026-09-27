@@ -138,10 +138,15 @@ details.check .answer { margin: 0 0 12px; padding: 10px 14px; border-left: 3px s
 .ind-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .ind-table tr:last-child td { border-bottom: 0; }
 .ind-table tr.sep td { border-top: 2px solid var(--border-strong); }
-.ind-table td.y, .ind-table td.n { font-weight: 650; white-space: nowrap; }
-.ind-table td.y::before { content: "● "; color: var(--ink-2); }
-.ind-table td.n::before { content: "○ "; color: var(--accent-ink); }
-.ind-table td.n { color: var(--accent-ink); }
+/* Tres estados de "¿necesita etiquetas?", cada uno con su color de celda + texto (nunca color solo) */
+.ind-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 10px; font-size: 0.84rem; color: var(--ink-2); }
+.ind-legend i { display: inline-block; width: 13px; height: 13px; border-radius: 4px; margin-right: 7px; vertical-align: -2px; border: 1px solid var(--border-strong); }
+.ind-legend .sw-y { background: var(--cell-y); } .ind-legend .sw-n { background: var(--cell-n); } .ind-legend .sw-s { background: var(--cell-s); }
+:root { --cell-y: color-mix(in srgb, var(--s4) 16%, var(--surface)); --cell-n: color-mix(in srgb, var(--s3) 15%, var(--surface)); --cell-s: color-mix(in srgb, var(--s1) 13%, var(--surface)); }
+.ind-table td.lab-y, .ind-table td.lab-n, .ind-table td.lab-s { white-space: nowrap; text-align: center; }
+.ind-table td.lab-y { background: var(--cell-y); } .ind-table td.lab-n { background: var(--cell-n); } .ind-table td.lab-s { background: var(--cell-s); }
+.lab-pill { font-weight: 700; font-size: 0.8rem; }
+.ind-table td.lab-y .lab-pill::before { content: "● "; } .ind-table td.lab-n .lab-pill::before { content: "○ "; } .ind-table td.lab-s .lab-pill::before { content: "◑ "; }
 .jac-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .px-ctl { margin: 4px 0 10px; font-size: 0.88rem; color: var(--ink-2); }
 .px-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
@@ -239,3 +244,16 @@ pre.code code { background: none; padding: 0; font-size: inherit; }
 #tuneTable, #taTable, #sweepTable { overflow-x: auto; }
 .ta-table { min-width: 560px; }
 .chart-card, .card { min-width: 0; }
+
+/* Bloque estándar "Qué NO optimizar" (assets/js/core/tuning-doc.js) */
+.nt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.nt-card { padding: 16px 18px; border-top: 3px solid var(--nt-c); --nt-c: var(--muted); }
+.nt-card.nt-fix { --nt-c: var(--s1); } .nt-card.nt-decide { --nt-c: var(--s2); } .nt-card.nt-repro { --nt-c: var(--s3); }
+.nt-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.nt-card header code { font-size: 0.84rem; font-weight: 650; }
+.nt-kind { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--nt-c) 16%, var(--surface)); color: var(--ink); border: 1px solid color-mix(in srgb, var(--nt-c) 45%, var(--border)); cursor: help; white-space: nowrap; }
+.nt-card p { margin: 0; font-size: 0.89rem; color: var(--ink-2); }
+.nt-instead { margin-top: 8px !important; padding-top: 8px; border-top: 1px dashed var(--border-strong); color: var(--ink) !important; }
+.nt-foot { margin-top: 12px; }
+@media (max-width: 1100px) { .nt-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) { .nt-grid { grid-template-columns: 1fr; } }

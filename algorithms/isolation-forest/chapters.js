@@ -77,6 +77,6 @@
       <p class="fine">Donde la ganancia es casi cero, los valores por defecto ya son buenos y tunear <b>no compensa</b>. Donde es grande (p. ej. anomalías agrupadas), el óptimo suele estar en el <b>interior</b> del rango de ψ.</p>`;
   }
 
-  function init() { terms(); takeaways(); checks(); cases(); nav(); tunability(); }
+  function init() { if (ML.tuningDoc && ML.TUNING_DOC) ML.tuningDoc.render(ML.TUNING_DOC, esc); terms(); takeaways(); checks(); cases(); nav(); tunability(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

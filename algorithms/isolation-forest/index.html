@@ -7,8 +7,8 @@
   <meta name="description" content="Curso interactivo sobre Isolation Forest: cómo cada hiperparámetro cambia el resultado, cómo evaluar un detector de anomalías con y sin etiquetas, cómo optimizar hiperparámetros y casos de la vida real.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M16 5v22M6 13h20M6 20h10' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='23' r='2.6' fill='%23eb6834'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="../../assets/css/site.css">
-  <link rel="stylesheet" href="lab.css">
-  <link rel="stylesheet" href="chapters.css">
+  <link rel="stylesheet" href="../../assets/css/lab.css">
+  <link rel="stylesheet" href="../../assets/css/chapters.css">
 </head>
 <body>
 <header class="site-header">
@@ -188,9 +188,11 @@
           </div>
         </div>
 
-        <div class="map-body">
+        <p class="axes-note" data-tip="<span class='tip-h'>¿Qué son los ejes?</span>Son las <b>dos variables (columnas) medidas</b> de cada observación, tal cual: <b>no</b> hay PCA, t-SNE ni ninguna reducción de dimensionalidad. Cada punto es una observación con sus dos valores, reescalados al intervalo [0, 1].">
+            <b>Los ejes son las dos variables medidas</b> (x₁ y x₂), sin reducción de dimensionalidad: cada punto es una observación y sus dos valores, reescalados a [0, 1]. En un caso real serían, por ejemplo, <i>monto</i> y <i>hora</i> de una transacción, o <i>temperatura</i> y <i>presión</i> de una pieza. <span class="an">Usamos 2 columnas solo para poder dibujarlo; el algoritmo funciona igual con cientos.</span></p>
+          <div class="map-body">
           <div class="canvas-wrap">
-            <canvas id="mapCanvas" aria-label="Mapa de puntos y scores de anomalía. Usa las tablas y tiles para ver resultados numéricos." role="img"></canvas>
+            <canvas id="mapCanvas" aria-label="Mapa de puntos y scores de anomalía. Los ejes son las dos variables medidas, x1 y x2. Usa las tablas y tiles para ver resultados numéricos." role="img"></canvas>
           </div>
           <div class="map-side">
             <div class="legend" aria-label="Leyenda">
@@ -339,20 +341,21 @@
     </div>
 
     <h3 class="sub-title">Qué indicador usar y cuándo</h3>
+    <div class="ind-legend" role="note"><span><i class="sw-y"></i><b>Sí</b> · solo en validación: necesitas casos confirmados</span><span><i class="sw-n"></i><b>No</b> · disponibles en producción</span><span><i class="sw-s"></i><b>Parcial</b> · etiquetas que llegan poco a poco (revisión de analistas)</span></div>
     <div class="table-wrap"><table class="ind-table">
-      <thead><tr><th>Indicador</th><th>¿Etiquetas?</th><th>Qué mide</th><th>Úsalo cuando…</th><th>Cuidado con…</th></tr></thead>
+      <thead><tr><th>Indicador</th><th>¿Necesita etiquetas?</th><th>Qué mide</th><th>Úsalo cuando…</th><th>Cuidado con…</th></tr></thead>
       <tbody>
-        <tr><td><b>ROC-AUC</b></td><td class="y">Sí</td><td>Calidad del ranking completo</td><td>Comparar hiperparámetros o modelos con etiquetas</td><td>Optimista si las anomalías son muy raras (<a class="cite" href="#ref-saito2015">Saito &amp; Rehmsmeier, 2015</a>)</td></tr>
-        <tr><td><b>AP / PR-AUC</b></td><td class="y">Sí</td><td>Ranking penalizando falsas alarmas</td><td>Anomalías raras; una falsa alarma cuesta</td><td>Su línea base es la prevalencia: compara contra ella</td></tr>
-        <tr><td><b>Precisión@k</b></td><td class="y">Sí</td><td>Aciertos en la lista corta que revisarás</td><td>Capacidad de revisión limitada (k alertas)</td><td>Depende de k y es ruidosa con pocas anomalías (<a class="cite" href="#ref-campos2016">Campos et al., 2016</a>)</td></tr>
-        <tr><td><b>Precisión, Recall, F1</b></td><td class="y">Sí</td><td>Calidad de la <b>decisión</b> con un umbral</td><td>Ya fijaste el umbral / contamination</td><td>Cambian con el umbral; F1 da igual peso a errores de costo distinto</td></tr>
-        <tr class="sep"><td><b>Estabilidad Jaccard@k</b></td><td class="n">No</td><td>Cuánto cambia la lista de alertas entre semillas o reentrenos</td><td>Siempre: control de cordura y monitoreo</td><td><b>Estable ≠ correcto</b> (mira el anillo con max_features = 0.5)</td></tr>
-        <tr><td><b>Correlación de rangos</b> (Spearman)</td><td class="n">No</td><td>Coincidencia del orden completo</td><td>Comparar ejecuciones o versiones del modelo</td><td>Pesa igual el orden de los normales, que no importa</td></tr>
-        <tr><td><b>Mass-Volume / Excess-Mass</b></td><td class="n">No</td><td>Concentración de la masa en poco volumen (<a class="cite" href="#ref-goix2016">Goix, 2016</a>)</td><td>Comparar detectores o configuraciones en pocas dimensiones</td><td>Volumen difícil de estimar en alta dimensión; falla con cúmulos anómalos densos</td></tr>
-        <tr><td><b>Acuerdo con otro detector</b></td><td class="n">No</td><td>Consenso entre métodos distintos</td><td>Señal de estructura real</td><td>Si comparten el mismo punto ciego, el acuerdo engaña</td></tr>
-        <tr><td><b>IREOS</b> (evaluación interna)</td><td class="n">No</td><td>Qué tan separables son las anomalías marcadas del resto (<a class="cite" href="#ref-marques2020">Marques et al., 2020</a>)</td><td>Comparar soluciones sin etiquetas</td><td>Costoso; no está implementado en este laboratorio</td></tr>
-        <tr><td><b>Histograma de scores</b></td><td class="n">No</td><td>Separación visual: masa de scores bajos + cola separada</td><td>Primer vistazo, siempre</td><td>Subjetivo</td></tr>
-        <tr><td><b>Retroalimentación de analistas</b></td><td class="n">Semi</td><td>Utilidad real de las alertas</td><td>Ya en producción</td><td>Lenta y sesgada hacia lo ya alertado</td></tr>
+        <tr><td><b>ROC-AUC</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Calidad del ranking completo</td><td>Comparar hiperparámetros o modelos con etiquetas</td><td>Optimista si las anomalías son muy raras (<a class="cite" href="#ref-saito2015">Saito &amp; Rehmsmeier, 2015</a>)</td></tr>
+        <tr><td><b>AP / PR-AUC</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Ranking penalizando falsas alarmas</td><td>Anomalías raras; una falsa alarma cuesta</td><td>Su línea base es la prevalencia: compara contra ella</td></tr>
+        <tr><td><b>Precisión@k</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Aciertos en la lista corta que revisarás</td><td>Capacidad de revisión limitada (k alertas)</td><td>Depende de k y es ruidosa con pocas anomalías (<a class="cite" href="#ref-campos2016">Campos et al., 2016</a>)</td></tr>
+        <tr><td><b>Precisión, Recall, F1</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Calidad de la <b>decisión</b> con un umbral</td><td>Ya fijaste el umbral / contamination</td><td>Cambian con el umbral; F1 da igual peso a errores de costo distinto</td></tr>
+        <tr class="sep"><td><b>Estabilidad Jaccard@k</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Cuánto cambia la lista de alertas entre semillas o reentrenos</td><td>Siempre: control de cordura y monitoreo</td><td><b>Estable ≠ correcto</b> (mira el anillo con max_features = 0.5)</td></tr>
+        <tr><td><b>Correlación de rangos</b> (Spearman)</td><td class="lab-n"><span class="lab-pill">No</span></td><td>Coincidencia del orden completo</td><td>Comparar ejecuciones o versiones del modelo</td><td>Pesa igual el orden de los normales, que no importa</td></tr>
+        <tr><td><b>Mass-Volume / Excess-Mass</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Concentración de la masa en poco volumen (<a class="cite" href="#ref-goix2016">Goix, 2016</a>)</td><td>Comparar detectores o configuraciones en pocas dimensiones</td><td>Volumen difícil de estimar en alta dimensión; falla con cúmulos anómalos densos</td></tr>
+        <tr><td><b>Acuerdo con otro detector</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Consenso entre métodos distintos</td><td>Señal de estructura real</td><td>Si comparten el mismo punto ciego, el acuerdo engaña</td></tr>
+        <tr><td><b>IREOS</b> (evaluación interna)</td><td class="lab-n"><span class="lab-pill">No</span></td><td>Qué tan separables son las anomalías marcadas del resto (<a class="cite" href="#ref-marques2020">Marques et al., 2020</a>)</td><td>Comparar soluciones sin etiquetas</td><td>Costoso; no está implementado en este laboratorio</td></tr>
+        <tr><td><b>Histograma de scores</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Separación visual: masa de scores bajos + cola separada</td><td>Primer vistazo, siempre</td><td>Subjetivo</td></tr>
+        <tr><td><b>Retroalimentación de analistas</b></td><td class="lab-s"><span class="lab-pill">Parcial</span></td><td>Utilidad real de las alertas</td><td>Ya en producción</td><td>Lenta y sesgada hacia lo ya alertado</td></tr>
       </tbody></table></div>
 
     <h3 class="sub-title">¿Y el Jaccard? Estabilidad entre semillas, en vivo</h3>
@@ -411,11 +414,8 @@
     </div>
 
     <h3 class="sub-title">4.3 Qué <u>no</u> optimizar</h3>
-    <div class="three-col">
-      <article class="card g-card"><h4><code>n_estimators</code></h4><p>Se <b>fija</b> en el plateau. Más árboles no daña, pero solo cuesta (<a class="cite" href="#ref-probst2018">Probst &amp; Boulesteix, 2018</a>). Úsalo como <i>recurso</i> (ver Successive Halving), no como hiperparámetro.</p></article>
-      <article class="card g-card"><h4><code>random_state</code></h4><p>Se fija para reproducir. Buscar la "mejor" semilla es sobreajustar al azar.</p></article>
-      <article class="card g-card"><h4><code>contamination</code></h4><p>Es una <b>decisión de negocio</b> (umbral / capacidad de revisión), no un ajuste del bosque. No cambia el ranking; optimizarlo para F1 con etiquetas escasas es engañoso (<a class="cite" href="#ref-perini2023">Perini et al., 2023</a>).</p></article>
-    </div>
+    <p class="lead-s">No todo parámetro configurable es un hiperparámetro que debas buscar. Tres categorías que se repiten en <b>todos</b> los modelos de este sitio:</p>
+    <div data-not-tune></div>
 
     <h3 class="sub-title">4.4 Métodos de búsqueda</h3>
     <div class="methods">
@@ -567,6 +567,7 @@ search.fit(X, y)     # el modelo ignora y al entrenar; solo se usa al puntuar</c
 <script src="../../assets/js/core/datasets.js"></script>
 <script src="../../assets/js/core/unsup.js"></script>
 <script src="../../assets/js/core/tuning.js"></script>
+<script src="../../assets/js/core/tuning-doc.js"></script>
 <script src="landscape.js"></script>
 <script src="content.js"></script>
 <script src="charts.js"></script>

@@ -404,8 +404,16 @@
     // marcos de referencia
     ctx2d.strokeStyle = c.grid; ctx2d.lineWidth = 1; ctx2d.setLineDash([2, 4]);
     ctx2d.strokeRect(0.5, 0.5, W - 1, W - 1); ctx2d.setLineDash([]);
-    ctx2d.fillStyle = c.muted; ctx2d.font = '11px system-ui, sans-serif';
-    ctx2d.fillText('x₁ →', W - 34, W - 8); ctx2d.save(); ctx2d.translate(12, 32); ctx2d.rotate(-Math.PI / 2); ctx2d.fillText('x₂ →', 0, 0); ctx2d.restore();
+    // ejes rotulados: variable 1 (horizontal) y variable 2 (vertical), ambas en [0, 1]
+    ctx2d.font = '600 11.5px system-ui, sans-serif';
+    const tag = (txt, x, y, rot) => {
+      ctx2d.save(); ctx2d.translate(x, y); if (rot) ctx2d.rotate(-Math.PI / 2);
+      const w = ctx2d.measureText(txt).width + 10;
+      ctx2d.fillStyle = c.surface; ctx2d.globalAlpha = 0.82; ctx2d.fillRect(-4, -12, w, 16); ctx2d.globalAlpha = 1;
+      ctx2d.fillStyle = c.ink2; ctx2d.fillText(txt, 1, 0); ctx2d.restore();
+    };
+    tag('variable x₁  0 → 1', W / 2 - 46, W - 7, false);
+    tag('variable x₂  0 → 1', 14, W / 2 + 46, true);
     const thrPct = clamp((model.thr - S_LO) / (S_HI - S_LO), 0, 1) * 100;
     $('#cbThr').style.left = thrPct + '%';
     $('#cbWrap').style.display = state.view === 'map' && state.showHeat ? '' : 'none';
