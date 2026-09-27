@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const ML = window.MLLab;
-  const IF = ML.IsolationForest, M = ML.metrics, D = ML.datasets, Ch = ML.charts;
+  const IF = ML.IsolationForest, M = ML.metrics, D = ML.datasets, Ch = ML.charts, U = ML.unsup;
   const { $, $$, clamp, fmt, pct, esc } = ML;
   const PARAMS = ML.IF_PARAMS, PMAP = Object.fromEntries(PARAMS.map((p) => [p.id, p]));
 
@@ -34,6 +34,7 @@
     added: [], params: { ...DEFAULTS }, active: 'nEstimators', open: 'nEstimators',
     view: 'map', treeIdx: 0, depthShown: 3, selected: -1, hover: -1, addMode: 'select',
     showHeat: true, showLabels: true, baseline: null, sweepMetric: 'ap', lastChange: null, lesson: null,
+    kFrac: 0.05, unsup: null,
   };
   let data = null, model = null, dataVersion = 0;
 
@@ -72,7 +73,9 @@
     ensureGrid(G);
     const grid = f.scores(gridXY, G * G);
     let pos = 0; for (let i = 0; i < n; i++) pos += y[i];
-    model = { f, scores, thr, conf, cv, grid, G, n, pos };
+    const k = clamp(Math.round(state.kFrac * n), 3, n - 1);
+    let hits = 0; U.topK(scores, k).forEach((i) => { hits += y[i]; });
+    model = { f, scores, thr, conf, cv, grid, G, n, pos, k, patk: hits / k };
     if (state.selected < 0 || state.selected >= n) state.selected = order(scores)[0];
     if (state.treeIdx >= f.nEstimators) state.treeIdx = 0;
     treeCache = null;
@@ -82,7 +85,7 @@
 
   function metricsNow() {
     const c = model.conf, cv = model.cv;
-    return { auc: cv ? cv.auc : NaN, ap: cv ? cv.ap : NaN, precision: cv ? c.precision : NaN, recall: cv ? c.recall : NaN, f1: cv ? c.f1 : NaN, flagged: c.flagged, n: model.n };
+    return { auc: cv ? cv.auc : NaN, ap: cv ? cv.ap : NaN, patk: model.pos ? model.patk : NaN, precision: cv ? c.precision : NaN, recall: cv ? c.recall : NaN, f1: cv ? c.f1 : NaN, flagged: c.flagged, n: model.n };
   }
 
   /* =====================================================================
@@ -251,11 +254,15 @@
   function runUpdate() {
     if (needRebuild || !data) { buildData(); needRebuild = false; }
     compute();
+    state.unsup = null; unsupToken++;
     renderAll();
     scheduleSweep();
+    scheduleUnsup();
     writeHash();
+    window.dispatchEvent(new CustomEvent('lab:update', { detail: { dataset: state.dataset, n: state.nPoints, frac: state.anomalyFrac, dataVersion } }));
   }
   const scheduleSweep = ML.debounce(() => runSweep(), 300);
+  const scheduleUnsup = ML.debounce(() => runUnsup(), 250);
 
   /* =====================================================================
    *  Render: mapa (canvas)
@@ -444,34 +451,38 @@
   /* =====================================================================
    *  Render: métricas, lectura, selección
    * ===================================================================== */
-  const TILE_ORDER = { rank: ['auc', 'ap'], dec: ['precision', 'recall', 'f1', 'flagged'] };
+  const TILE_ORDER = { rank: ['auc', 'ap', 'patk'], dec: ['precision', 'recall', 'f1', 'flagged'], unsup: ['jac', 'spr', 'mv', 'agree'] };
   function buildTiles() {
     Object.entries(TILE_ORDER).forEach(([g, ids]) => {
-      $(g === 'rank' ? '#tilesRank' : '#tilesDec').innerHTML = ids.map((id) => {
+      $(g === 'rank' ? '#tilesRank' : g === 'dec' ? '#tilesDec' : '#tilesUnsup').innerHTML = ids.map((id) => {
         const d = ML.IF_METRICS[id];
         return `<div class="tile" tabindex="0" data-m="${id}" data-tip="${esc(d.tip)}"><div class="t-label">${d.label}<i>?</i></div><div class="t-val">—</div><div class="delta flat"></div></div>`;
       }).join('');
     });
   }
   function deltaHTML(id, v, b) {
-    if (!state.baseline || !Number.isFinite(v) || !Number.isFinite(b)) return ['delta flat', state.baseline ? '' : ''];
+    if (!state.baseline || !Number.isFinite(v) || !Number.isFinite(b)) return ['delta flat', ''];
     if (id === 'flagged') { const d = v - b; return d === 0 ? ['delta flat', '= igual'] : ['delta flat', `${d > 0 ? '▲ +' : '▼ '}${d} vs ref.`]; }
     const d = v - b;
     if (Math.abs(d) < 0.0005) return ['delta flat', '= igual'];
-    return [d > 0 ? 'delta up' : 'delta down', `${d > 0 ? '▲ +' : '▼ '}${d.toFixed(3)} vs ref.`];
+    const better = d * ((ML.IF_METRICS[id] && ML.IF_METRICS[id].dir) || 1) > 0;
+    return [better ? 'delta up' : 'delta down', `${d > 0 ? '▲ +' : '▼ '}${d.toFixed(3)} vs ref.`];
   }
   function renderMetrics() {
     const m = metricsNow(), base = state.baseline ? state.baseline.m : null;
+    const um = state.unsup ? { jac: state.unsup.jac, spr: state.unsup.spr, mv: state.unsup.mv, agree: state.unsup.agree } : {};
+    Object.assign(m, um);
     $$('.tile').forEach((t) => {
       const id = t.dataset.m, v = m[id];
+      if (v === undefined) { t.querySelector('.t-val').textContent = '…'; t.querySelector('.delta').textContent = ''; return; }
       t.querySelector('.t-val').innerHTML = id === 'flagged' ? `${v}<small> / ${m.n}</small>` : fmt(v, 3);
       const [cls, txt] = deltaHTML(id, v, base ? base[id] : NaN);
       const dl = t.querySelector('.delta'); dl.className = cls; dl.textContent = txt;
     });
     $('#baseBtn').textContent = state.baseline ? '📌 Actualizar referencia' : '📌 Fijar referencia';
     $('#baseClear').hidden = !state.baseline;
-    $('#miniMetrics').innerHTML = [['ROC-AUC', fmt(m.auc, 3)], ['AP', fmt(m.ap, 3)], ['F1', fmt(m.f1, 3)], ['Marcados', `${m.flagged}/${m.n}`]]
-      .map(([k, v]) => `<div class="mm"><span>${k}</span><b>${v}</b></div>`).join('');
+    $('#miniMetrics').innerHTML = [['auc', 'ROC-AUC', fmt(m.auc, 3)], ['ap', 'AP', fmt(m.ap, 3)], ['f1', 'F1', fmt(m.f1, 3)], ['flagged', 'Marcados', `${m.flagged}/${m.n}`]]
+      .map(([id, k, v]) => `<div class="mm" data-tip="${esc(ML.IF_METRICS[id].tip)}"><span>${k}</span><b>${v}</b></div>`).join('');
     renderReading(m);
   }
 
@@ -502,6 +513,7 @@
     else if (flagged < pos * 0.7) t += `Se marcan de menos: se escapan anomalías (recall ${fmt(m.recall, 2)}).`;
     else t += `El umbral está bien calibrado (precisión ${fmt(m.precision, 2)}, recall ${fmt(m.recall, 2)}).`;
     out.push(['Umbral', t]);
+    if (state.unsup) out.push(['Sin etiquetas', `Estabilidad Jaccard@${state.unsup.k} = <b>${fmt(state.unsup.jac, 2)}</b>: ${state.unsup.jac >= 0.9 ? 'las listas de alertas casi no cambian entre semillas' : state.unsup.jac >= 0.7 ? 'la lista cambia moderadamente entre semillas' : 'la lista de alertas depende demasiado del azar (más árboles o ψ mayor)'}. Mass-Volume = ${fmt(state.unsup.mv, 3)} (menor es mejor).`]);
     const warn = [];
     if (model.f.nEstimators < 30) warn.push(`con solo <b>${model.f.nEstimators}</b> árboles el resultado es ruidoso: cambia la semilla y comprueba cuánto varía`);
     if (model.f.psi < 32) warn.push(`con ψ = <b>${model.f.psi}</b> cada árbol es demasiado tosco`);
@@ -601,16 +613,19 @@
     if ((spec.kind === 'lin' || spec.kind === 'log') && typeof cur === 'number' && !vals.includes(cur)) { vals.push(cur); vals.sort((a, b) => a - b); }
     return vals;
   }
-  function scoresFor(p) {
+  function scoresEntry(p) {
     const key = [dataVersion, p.nEstimators, p.maxSamples, p.maxFeatures, p.bootstrap ? 1 : 0, p.seed].join('|');
-    let s = scoreCache.get(key);
-    if (!s) {
-      s = IF.fit(data.X, data.n, 2, p).scores(data.X, data.n);
+    let e = scoreCache.get(key);
+    if (!e) {
+      const t0 = performance.now();
+      const s = IF.fit(data.X, data.n, 2, p).scores(data.X, data.n);
+      e = { s, ms: performance.now() - t0 };
       if (scoreCache.size > 500) scoreCache.clear();
-      scoreCache.set(key, s);
+      scoreCache.set(key, e);
     }
-    return s;
+    return e;
   }
+  const scoresFor = (p) => scoresEntry(p).s;
   async function runSweep() {
     if (!data) return;
     const token = ++sweepToken, id = state.active, spec = SWEEPS[id], vals = sweepValues(id);
@@ -619,16 +634,18 @@
     drawSweep();
     for (const v of vals) {
       const metrics = { auc: [], ap: [], f1: [] };
+      let msSum = 0, msN = 0;
       for (let r = 0; r < spec.reps; r++) {
         const p = { ...state.params };
         if (id === 'seed') p.seed = v; else { p[id] = v; p.seed = state.params.seed + 1000 * r; }
-        const s = scoresFor(p), cv = M.curves(s, data.y);
+        const ent = scoresEntry(p), s = ent.s, cv = M.curves(s, data.y);
+        msSum += ent.ms; msN++;
         if (!cv) continue;
         const thr = IF.threshold(s, p.contamination);
         metrics.auc.push(cv.auc); metrics.ap.push(cv.ap); metrics.f1.push(M.confusion(s, data.y, thr).f1);
       }
       if (token !== sweepToken) return;
-      if (metrics.auc.length) results.push({ x: v, metrics });
+      if (metrics.auc.length) results.push({ x: v, metrics, ms: msN ? msSum / msN : NaN });
       drawSweep();
       await new Promise((res) => setTimeout(res, 0));
       if (token !== sweepToken) return;
@@ -645,15 +662,73 @@
     // tabla accesible
     const rows = s.results.map((r) => {
       const a = r.metrics[state.sweepMetric], m = a.reduce((x, v) => x + v, 0) / a.length, sd = Math.sqrt(a.reduce((x, v) => x + (v - m) ** 2, 0) / a.length);
-      return `<tr><td>${esc(String(s.spec.tickLabel ? s.spec.tickLabel(r.x) : r.x))}</td><td>${fmt(m, 3)}</td><td>${fmt(sd, 3)}</td><td>${fmt(Math.min(...a), 3)}</td><td>${fmt(Math.max(...a), 3)}</td></tr>`;
+      return `<tr><td>${esc(String(s.spec.tickLabel ? s.spec.tickLabel(r.x) : r.x))}</td><td>${fmt(m, 3)}</td><td>${fmt(sd, 3)}</td><td>${fmt(Math.min(...a), 3)}</td><td>${fmt(Math.max(...a), 3)}</td><td>${Number.isFinite(r.ms) ? r.ms.toFixed(1) : '—'}</td></tr>`;
     }).join('');
-    $('#sweepTable').innerHTML = `<table><thead><tr><th>${s.spec.code}</th><th>media</th><th>desv.</th><th>mín</th><th>máx</th></tr></thead><tbody>${rows}</tbody></table>`;
+    $('#sweepInsight').innerHTML = s.running ? '' : sweepInsight();
+    $('#sweepTable').innerHTML = `<table><thead><tr><th>${s.spec.code}</th><th>media</th><th>desv.</th><th>mín</th><th>máx</th><th>ms</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  /** Lectura automática del barrido: plateau y costo, óptimo o diferencia frente al ruido entre semillas. */
+  function sweepInsight() {
+    const s = sweepState; if (!s || s.results.length < 2) return '';
+    const m = state.sweepMetric, name = { auc: 'ROC-AUC', ap: 'AP', f1: 'F1' }[m], vals = s.results.map((r) => r.x);
+    const st = s.results.map((r) => { const a = r.metrics[m], mu = a.reduce((x, v) => x + v, 0) / a.length; return { mu, sd: Math.sqrt(a.reduce((x, v) => x + (v - mu) ** 2, 0) / a.length), ms: r.ms }; });
+    const best = Math.max(...st.map((x) => x.mu)), bi = st.findIndex((x) => x.mu === best), fmtx = (v) => (s.spec.tickLabel ? s.spec.tickLabel(v) : v);
+    if (s.id === 'nEstimators') {
+      const last = st.length - 1, ref = st[last].mu, tol = 0.01;
+      let i = 0; while (i < last && !st.slice(i).every((x) => Math.abs(x.mu - ref) <= tol)) i++;
+      const ratio = st[i].ms > 0 ? st[last].ms / st[i].ms : NaN;
+      return `<b>Rendimientos decrecientes:</b> desde T ≈ <b>${vals[i]}</b> el ${name} queda a menos de ${tol} del valor que se obtiene con T = ${vals[last]} (${fmt(ref, 3)}). Seguir hasta T = ${vals[last]} cuesta ≈ ${st[last].ms.toFixed(0)} ms frente a ≈ ${st[i].ms.toFixed(0)} ms${Number.isFinite(ratio) && ratio > 1.05 ? ' (' + ratio.toFixed(1) + '× más)' : ''} y solo suma ${fmt(Math.max(0, ref - st[i].mu), 3)}. Más árboles reduce el ruido pero no corrige el sesgo: <b>no lo optimices, fíjalo</b> en el plateau.`;
+    }
+    if (s.id === 'maxSamples') {
+      const cur = s.current, ci = vals.indexOf(cur), interior = bi > 0 && bi < vals.length - 1;
+      return `<b>Mejor valor en este barrido:</b> ψ = ${vals[bi]} (${name} ${fmt(best, 3)})${ci >= 0 && ci !== bi ? `; con el valor actual (ψ = ${cur}) el ${name} es ${fmt(st[ci].mu, 3)}` : ''}. ${interior ? 'El óptimo está en el <b>interior</b> del rango: ni el mayor ni el menor. Por eso vale la pena buscarlo.' : 'El óptimo está en un extremo del rango probado: en estos datos, más (o menos) ψ es mejor de forma monótona.'}`;
+    }
+    if (s.id === 'contamination') {
+      if (m !== 'f1') return `Con ${name} la curva es <b>plana</b>: contamination no cambia el ranking. Cambia a F1 para ver su efecto.`;
+      return `<b>F1 máximo</b> = ${fmt(best, 3)} con contamination ≈ ${fmtx(vals[bi])}; la fracción real de anomalías es ${(100 * model.pos / model.n).toFixed(1)} %. ${Math.abs(vals[bi] - model.pos / model.n) < 0.03 ? 'El óptimo cae cerca de la prevalencia real (algo que en producción no conoces).' : ''}`;
+    }
+    if (s.id === 'seed') { const sd = st.length ? st.map((x) => x.mu) : []; const mu = sd.reduce((a, b) => a + b, 0) / sd.length, dev = Math.sqrt(sd.reduce((a, b) => a + (b - mu) ** 2, 0) / sd.length); return `Solo por cambiar la semilla, el ${name} varía ${fmt(Math.min(...sd), 3)}–${fmt(Math.max(...sd), 3)} (desv. ${fmt(dev, 3)}). Esa es la <b>varianza atribuible al azar</b>: diferencias menores entre configuraciones no son distinguibles.`; }
+    const pooled = Math.max(...st.map((x) => x.sd)), diff = Math.max(...st.map((x) => x.mu)) - Math.min(...st.map((x) => x.mu));
+    return `Diferencia entre categorías: <b>${fmt(diff, 3)}</b> en ${name}; la dispersión entre semillas llega a ${fmt(pooled, 3)}. ${diff < 2 * pooled ? 'La diferencia es <b>comparable al ruido</b>: no puedes afirmar que una sea mejor.' : 'La diferencia supera claramente el ruido.'}`;
   }
   function renderSweepChrome() {
     const spec = SWEEPS[state.active];
     $('#sweepTitle').innerHTML = `Barrido de <code>${spec.code}</code>`;
     $('#sweepHint').textContent = SWEEP_HINT[state.active];
     $$('#sweepMetricSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.m === state.sweepMetric)));
+  }
+
+  /* ---------- Indicadores SIN etiquetas ---------- */
+  const UNI_N = 1500;
+  let uniPts = null, knnCache = { v: -1, s: null }, unsupToken = 0;
+  async function runUnsup() {
+    if (!model) return;
+    const token = ++unsupToken, m = model, k = m.k;
+    if (!uniPts) uniPts = U.uniformPoints(UNI_N, 2, IF.mulberry32(99));
+    const lists = [];
+    for (let r = 0; r < 5; r++) {
+      lists.push(scoresFor({ ...state.params, seed: state.params.seed + 1000 * r }));
+      await new Promise((res) => setTimeout(res, 0));
+      if (token !== unsupToken) return;
+    }
+    const tops = lists.map((s) => U.topK(s, k)), mat = tops.map((a) => tops.map((b) => U.jaccard(a, b)));
+    let jac = 0, spr = 0, c = 0;
+    for (let a = 0; a < 5; a++) for (let b = a + 1; b < 5; b++) { jac += mat[a][b]; spr += U.spearman(lists[a], lists[b]); c++; }
+    const mvr = U.massVolume(m.scores, m.f.scores(uniPts, UNI_N));
+    if (knnCache.v !== dataVersion) knnCache = { v: dataVersion, s: U.knnScores(data.X, data.n, 2, 10) };
+    const agree = U.jaccard(U.topK(m.scores, k), U.topK(knnCache.s, k));
+    if (token !== unsupToken) return;
+    state.unsup = { jac: jac / c, spr: spr / c, mv: mvr.mvArea, agree, mat, k, mvr };
+    renderMetrics(); renderUnsupCharts();
+  }
+  function renderUnsupCharts() {
+    const u = state.unsup, host1 = $('#jacChart'), host2 = $('#mvChart');
+    if (!host1 || !host2) return;
+    if (!u) { host1.innerHTML = host2.innerHTML = '<div class="empty">Calculando…</div>'; return; }
+    Ch.matrix(host1, { values: u.mat, labels: ['s1', 's2', 's3', 's4', 's5'], mean: u.jac, k: u.k });
+    Ch.mvCurve(host2, { alphas: u.mvr.alphas, mv: u.mvr.mv, area: u.mv });
+    const lvl = u.jac >= 0.9 ? 'alta' : u.jac >= 0.7 ? 'moderada' : 'baja';
+    $('#unsupNote').innerHTML = `Con este modelo, dos semillas distintas comparten en promedio el <b>${(100 * u.jac).toFixed(0)} %</b> de las ${u.k} alertas más altas (estabilidad <b>${lvl}</b>). Recuerda: que sea estable no garantiza que sea correcto.`;
   }
 
   /* =====================================================================
@@ -667,7 +742,7 @@
   }
   function applyLesson(id) {
     const l = ML.IF_LESSONS.find((x) => x.id === id), s = l.setup;
-    state.lesson = id; state.dataset = s.dataset; state.added = []; state.selected = -1; state.dataSeed = 11; state.anomalyFrac = 0.06; state.nPoints = 500;
+    state.lesson = id; state.dataset = s.dataset; state.added = []; state.selected = -1; state.dataSeed = 11; state.anomalyFrac = s.frac || 0.06; state.nPoints = s.n || 500;
     state.params = { ...DEFAULTS, ...s.params };
     if (typeof s.params.contamination === 'number') state.lastContam = s.params.contamination;
     state.lastChange = null; state.baseline = null;
@@ -684,6 +759,7 @@
     renderSweepChrome();
     $('#lab').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+  ML.applyLesson = applyLesson;
 
   /* =====================================================================
    *  Vistas, toggles y hash
@@ -707,12 +783,12 @@
     $('#treePrev').addEventListener('click', () => stepTree(-1));
     $('#treeNext').addEventListener('click', () => stepTree(1));
     $('#depthRange').addEventListener('input', (e) => { state.depthShown = +e.target.value; renderTreeNote(); drawMap(); });
-    $('#baseBtn').addEventListener('click', () => { state.baseline = { m: metricsNow() }; renderMetrics(); });
+    $('#baseBtn').addEventListener('click', () => { state.baseline = { m: Object.assign(metricsNow(), state.unsup ? { jac: state.unsup.jac, spr: state.unsup.spr, mv: state.unsup.mv, agree: state.unsup.agree } : {}) }; renderMetrics(); });
     $('#baseClear').addEventListener('click', () => { state.baseline = null; renderMetrics(); });
     $$('#sweepMetricSeg button').forEach((b) => b.addEventListener('click', () => { state.sweepMetric = b.dataset.m; renderSweepChrome(); drawSweep(); }));
     $$('[data-pick]').forEach((b) => b.addEventListener('click', () => { state.selected = pickIndex(b.dataset.pick); treeCache = null; renderSelection(); }));
     window.addEventListener('themechange', () => { drawMap(); renderConvergence(); });
-    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (resizeCanvas() && model) { drawMap(); renderCharts(); } }, 120); });
+    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (resizeCanvas() && model) { drawMap(); renderCharts(); renderUnsupCharts(); } }, 120); });
     if ('ResizeObserver' in window) new ResizeObserver(ML.debounce(() => { if (resizeCanvas() && model) { drawMap(); renderCharts(); } }, 100)).observe($('.canvas-wrap'));
   }
 
@@ -728,7 +804,7 @@
     if (D.DEFS[h.get('ds')]) state.dataset = h.get('ds');
     const num = (k, d) => (h.has(k) && Number.isFinite(+h.get(k)) ? +h.get(k) : d);
     state.nPoints = [200, 500, 1000].includes(num('np', 500)) ? num('np', 500) : 500;
-    state.anomalyFrac = clamp(num('fr', 6), 1, 15) / 100; state.dataSeed = num('dsd', 11);
+    state.anomalyFrac = clamp(num('fr', 6), 0.5, 15) / 100; state.dataSeed = num('dsd', 11);
     const P = state.params;
     P.nEstimators = clamp(Math.round(num('t', 100)), 1, 500); P.maxSamples = clamp(Math.round(num('psi', 256)), 2, 5000);
     P.contamination = h.get('c') === 'auto' || !h.has('c') ? 'auto' : clamp(num('c', 10), 0.5, 50) / 100;
@@ -752,9 +828,9 @@
     readHash();
     buildTiles(); buildParamCards(); buildDataControls(); buildLessons(); wireUI(); wireCanvas();
     resizeCanvas();
-    buildData(); compute(); renderAll(); runSweep(); writeHash();
+    buildData(); compute(); renderAll(); runSweep(); renderUnsupCharts(); runUnsup(); writeHash();
     // Se expone para depuración/pruebas en clase
-    ML.lab = { state, get model() { return model; }, get data() { return data; } };
+    ML.lab = { state, get model() { return model; }, get data() { return data; }, applyLesson, setDataset: (id) => { setDataset(id); } };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

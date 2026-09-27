@@ -304,4 +304,5 @@
       return `<span class="tip-h">h entre ${k} y ${k + 1}</span>${row('árboles', counts[k])}<span class="tip-sub">Cada árbol da una opinión distinta; el score usa el promedio.</span>`;
     });
   };
+  C._h = { lin, logs, niceTicks, box, svgOpen, gridY, axisX, xTitle, yTitle, hover, dot, row };
 })();

@@ -141,10 +141,14 @@ input[type="number"] {
 .metrics-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .metrics-head h3 { font-size: 1.05rem; }
 .mh-actions { display: flex; gap: 6px; }
-.tile-groups { display: grid; grid-template-columns: 2fr 3fr; gap: 16px; }
+.tile-groups { display: grid; grid-template-columns: 3fr 4fr; gap: 20px; }
 .tg-title { font-size: 0.82rem; font-weight: 650; color: var(--ink-2); margin-bottom: 8px; }
-.tg-title small { font-weight: 500; color: var(--muted); margin-left: 4px; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 10px; }
+.tg-title small { font-weight: 500; color: var(--muted); margin-left: 6px; }
+.lbl { display: inline-block; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 8px; border-radius: 999px; font-weight: 700; margin-left: 8px; vertical-align: 1px; white-space: nowrap; }
+.lbl.need { background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--ink-2); }
+.lbl.free { background: var(--accent-wash); border: 1px solid var(--accent); color: var(--accent-ink); }
+.unsup-group .tile { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 32%, var(--border)); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; }
 .tile { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface-2); min-width: 0; }
 .tile .t-label { font-size: 0.78rem; color: var(--ink-2); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .tile .t-label i { font-style: normal; font-size: 0.68rem; border: 1px solid var(--axis); border-radius: 50%; width: 14px; height: 14px; display: inline-grid; place-items: center; color: var(--muted); }

@@ -188,6 +188,26 @@
       return acc;
     }
 
+    /**
+     * E[h(x)] usando solo los primeros T árboles, para varios T a la vez (una sola pasada).
+     * Como los árboles no dependen de n_estimators, el bosque de 300 contiene a los de 3, 10, 30, 100…
+     * @param {number[]} checkpoints  T crecientes
+     * @returns {Float64Array[]} un arreglo de E[h] por checkpoint
+     */
+    meanPathAtCheckpoints(Xq, m, checkpoints) {
+      const d = this.d, acc = new Float64Array(m), out = [];
+      let ci = 0;
+      for (let t = 0; t < this.trees.length && ci < checkpoints.length; t++) {
+        for (let i = 0; i < m; i++) acc[i] += this.pathLength(t, Xq, i * d);
+        if (t + 1 === checkpoints[ci]) {
+          const eh = new Float64Array(m);
+          for (let i = 0; i < m; i++) eh[i] = acc[i] / (t + 1);
+          out.push(eh); ci++;
+        }
+      }
+      return out;
+    }
+
     /** h_t(x) para todos los árboles, dado un único punto. */
     pathLengthsOf(x) {
       const out = new Float64Array(this.trees.length);

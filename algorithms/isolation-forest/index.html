@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Isolation Forest · Laboratorio de hiperparámetros</title>
-  <meta name="description" content="Laboratorio interactivo para entender cómo cada hiperparámetro de Isolation Forest (n_estimators, max_samples, contamination, max_features, bootstrap, random_state) cambia el resultado de un detector de anomalías.">
+  <meta name="description" content="Curso interactivo sobre Isolation Forest: cómo cada hiperparámetro cambia el resultado, cómo evaluar un detector de anomalías con y sin etiquetas, cómo optimizar hiperparámetros y casos de la vida real.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M16 5v22M6 13h20M6 20h10' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='23' r='2.6' fill='%23eb6834'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="../../assets/css/site.css">
   <link rel="stylesheet" href="lab.css">
+  <link rel="stylesheet" href="chapters.css">
 </head>
 <body>
 <header class="site-header">
@@ -16,10 +17,9 @@
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M16 5v22M6 13h20M6 20h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="24" cy="23" r="2.6" fill="var(--s2)"/></svg>
       <span>ML Hyperparameter Lab</span>
     </a>
-    <nav class="nav" aria-label="Secciones">
-      <a href="#lessons">Escenarios</a>
-      <a href="#lab">Laboratorio</a>
-      <a href="#guide">Cómo leer</a>
+    <span class="crumb">Isolation Forest</span>
+    <nav class="nav" aria-label="Sitio">
+      <a href="../../index.html">Algoritmos</a>
       <button class="icon-btn" id="themeBtn" type="button" aria-label="Cambiar tema claro/oscuro" data-tip="Cambiar entre tema claro y oscuro">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       </button>
@@ -27,34 +27,128 @@
   </div>
 </header>
 
+<!-- Navegación por capítulos (secuencia de lectura) -->
+<nav class="chapnav" aria-label="Capítulos">
+  <div class="wrap">
+    <ol id="chapList">
+      <li><a href="#ch1" data-ch="ch1"><b>1</b><span>La idea</span></a></li>
+      <li><a href="#ch2" data-ch="ch2"><b>2</b><span>Laboratorio</span></a></li>
+      <li><a href="#ch3" data-ch="ch3"><b>3</b><span>Evaluar</span></a></li>
+      <li><a href="#ch4" data-ch="ch4"><b>4</b><span>Optimizar</span></a></li>
+      <li><a href="#ch5" data-ch="ch5"><b>5</b><span>Casos reales</span></a></li>
+      <li><a href="#ch6" data-ch="ch6"><b>6</b><span>Checklist</span></a></li>
+      <li><a href="#refs" data-ch="refs"><b>★</b><span>Bibliografía</span></a></li>
+    </ol>
+  </div>
+  <div class="progress" aria-hidden="true"><i id="progBar"></i></div>
+</nav>
+
 <main>
-  <!-- HERO -->
-  <section class="hero">
-    <div class="wrap">
-      <p class="eyebrow">Detección de anomalías · Laboratorio 01</p>
-      <h1>Isolation Forest:<br><span class="grad">mueve un hiperparámetro y mira qué cambia</span></h1>
-      <p class="lead">El modelo se entrena <b>en tu navegador</b>, en tiempo real. Cada control tiene su definición, su rol dentro del algoritmo y su efecto medible en las métricas y gráficas. Pasa el cursor por cualquier control, tile o gráfica para leer qué significa.</p>
-      <div class="ideas">
-        <article class="card idea"><span class="num">1</span><h3>Las anomalías son pocas y diferentes</h3><p>No modelamos lo "normal": buscamos lo que <i>se aleja</i> de la masa de datos.</p></article>
-        <article class="card idea"><span class="num">2</span><h3>Se aíslan con cortes al azar</h3><p>Cada árbol elige una variable y un valor de corte aleatorios hasta dejar cada punto solo en su celda.</p></article>
-        <article class="card idea"><span class="num">3</span><h3>Menos cortes ⇒ más anómalo</h3><p>Score <span class="mono formula">s(x) = 2<sup>−E[h(x)] / c(ψ)</sup></span>. Cerca de 1 = anómalo · cerca de 0.5 = sin estructura · cerca de 0 = normal.</p></article>
+  <!-- ============================ PORTADA ============================ -->
+  <section class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Detección de anomalías · Laboratorio 01</p>
+        <h1>Isolation Forest: entiende los hiperparámetros <span class="grad">moviéndolos</span></h1>
+        <p class="lead">Un curso interactivo. El modelo se entrena <b>en tu navegador</b>, en tiempo real: cambias un hiperparámetro y ves qué pasa con el mapa, las métricas y las gráficas. Al señalar cualquier control, indicador o término subrayado aparece su definición.</p>
+        <div class="hero-cta"><a class="btn primary" href="#ch1">Empezar por la idea →</a><a class="btn" href="#ch2">Ir directo al laboratorio</a></div>
       </div>
+      <figure class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 360 290" role="presentation">
+          <rect x="1" y="1" width="358" height="288" rx="18" fill="var(--surface)" stroke="var(--border-strong)"/>
+          <rect x="216" y="1" width="143" height="127" fill="var(--accent-wash)"/>
+          <g stroke="var(--axis)" stroke-width="1.6" stroke-linecap="round">
+            <path d="M216 1V289"/><path d="M1 128H216"/><path d="M110 128V289"/><path d="M110 210H216"/>
+          </g>
+          <g fill="var(--ink-2)"><circle cx="128" cy="150" r="4"/><circle cx="150" cy="172" r="4"/><circle cx="171" cy="152" r="4"/><circle cx="184" cy="186" r="4"/><circle cx="140" cy="196" r="4"/><circle cx="163" cy="222" r="4"/><circle cx="196" cy="238" r="4"/><circle cx="130" cy="240" r="4"/><circle cx="60" cy="200" r="4"/><circle cx="40" cy="70" r="4"/><circle cx="150" cy="60" r="4"/><circle cx="186" cy="250" r="4"/></g>
+          <circle cx="300" cy="62" r="7" fill="var(--s2)"/><circle cx="300" cy="62" r="14" fill="none" stroke="var(--s2)" stroke-width="2"/>
+          <g font-size="12" fill="var(--ink-2)" font-family="var(--font)" style="paint-order:stroke;stroke:var(--surface);stroke-width:4px"><text x="226" y="116">aislado en 2 cortes</text><text x="10" y="264">normales:</text><text x="10" y="280">muchos cortes</text></g>
+        </svg>
+      </figure>
+    </div>
+    <div class="wrap">
+      <h2 class="route-title">Ruta de lectura</h2>
+      <ol class="route">
+        <li><a href="#ch1"><span class="r-n">1</span><b>La idea</b><small>Por qué las anomalías se aíslan con pocos cortes · ≈ 4 min</small></a></li>
+        <li><a href="#ch2"><span class="r-n">2</span><b>Laboratorio</b><small>Mueve cada hiperparámetro y observa · ≈ 12 min</small></a></li>
+        <li><a href="#ch3"><span class="r-n">3</span><b>Evaluar</b><small>Indicadores con y sin etiquetas · ≈ 8 min</small></a></li>
+        <li><a href="#ch4"><span class="r-n">4</span><b>Optimizar</b><small>Por qué y cómo tunear · ≈ 10 min</small></a></li>
+        <li><a href="#ch5"><span class="r-n">5</span><b>Casos reales</b><small>Fraude, industria, seguridad… · ≈ 6 min</small></a></li>
+        <li><a href="#ch6"><span class="r-n">6</span><b>Checklist</b><small>Flujo de trabajo y errores comunes · ≈ 4 min</small></a></li>
+      </ol>
+      <p class="route-note">Los tiempos son estimaciones. Puedes saltar entre capítulos, pero cada uno usa conceptos de los anteriores.</p>
     </div>
   </section>
 
-  <!-- ESCENARIOS -->
-  <section class="wrap section" id="lessons">
-    <div class="section-head">
-      <h2>Escenarios guiados</h2>
-      <p>Cada uno carga datos y parámetros para que veas un concepto concreto. Elige uno, sigue los pasos y compara.</p>
+  <!-- ============================ CAPÍTULO 1 ============================ -->
+  <section class="chapter wrap" id="ch1" aria-labelledby="ch1-t">
+    <header class="ch-head"><span class="ch-num">1</span><div><p class="ch-kicker">Capítulo 1 · ≈ 4 min</p><h2 id="ch1-t">La idea: aislar en lugar de perfilar</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>explicar por qué un punto raro se aísla con pocos cortes aleatorios;</li>
+      <li>leer un <span data-term="score">score de anomalía</span> y saber qué significa que sea 0.5, 0.7 o 0.3;</li>
+      <li>nombrar los dos ingredientes aleatorios del algoritmo: qué puntos usa cada árbol y dónde corta.</li>
+    </ul></div>
+
+    <div class="ideas">
+      <article class="card idea"><span class="num">1</span><h3>Las <span data-term="anomalia">anomalías</span> son pocas y diferentes</h3><p>No modelamos lo "normal": buscamos lo que <i>se aleja</i> de la masa de datos.</p></article>
+      <article class="card idea"><span class="num">2</span><h3>Se aíslan con cortes al azar</h3><p>Cada árbol elige una variable y un valor de corte aleatorios hasta dejar cada punto solo en su celda.</p></article>
+      <article class="card idea"><span class="num">3</span><h3>Menos cortes ⇒ más anómalo</h3><p>Se promedia el nº de cortes sobre muchos árboles (un <span data-term="ensemble">bosque</span>) y se normaliza a un score entre 0 y 1.</p></article>
+    </div>
+
+    <article class="card race" id="race">
+      <header class="race-head"><h3>Carrera de aislamiento</h3><p>Elige un punto y haz cortes aleatorios hasta dejarlo solo. Compara al punto <b style="color:var(--s2)">anómalo</b> con uno <b style="color:var(--s1)">normal</b>.</p></header>
+      <div class="race-body">
+        <div class="race-canvas"><canvas id="raceCanvas" role="img" aria-label="Puntos con cortes aleatorios que aíslan al punto elegido"></canvas></div>
+        <div class="race-side">
+          <div class="seg" id="raceTarget" role="group" aria-label="Punto a aislar"><button type="button" data-t="a" aria-pressed="false">Punto anómalo</button><button type="button" data-t="n" aria-pressed="false">Punto normal</button></div>
+          <div class="race-btns">
+            <button class="btn primary" type="button" id="raceCut">✂ Hacer un corte</button>
+            <button class="btn" type="button" id="racePlay">▶ Automático</button>
+            <button class="btn" type="button" id="raceReset">↺ Reiniciar</button>
+          </div>
+          <p class="race-status" id="raceStatus" aria-live="polite"></p>
+          <div class="race-count">Cortes hasta ahora: <b id="raceCuts">0</b></div>
+          <hr>
+          <button class="btn" type="button" id="raceMany" data-tip="Repite la carrera 300 veces para el punto anómalo y para el normal, con cortes distintos cada vez.">⟳ Repetir 300 veces</button>
+          <button class="btn sm" type="button" id="raceNew">Nuevos datos</button>
+          <div class="chart" id="raceHist" data-chart-tip></div>
+          <p class="race-means" id="raceMeans"></p>
+        </div>
+      </div>
+    </article>
+
+    <div class="card formula-card">
+      <h3>De cortes a score</h3>
+      <p>Si <b>E[h(x)]</b> es el promedio de cortes para aislar <i>x</i> y <b>c(ψ)</b> es el nº esperado de cortes de un punto "promedio" (depende del tamaño de la muestra ψ), el <span data-term="score">score</span> es</p>
+      <p class="formula-big">s(x) = 2<sup>−E[h(x)] / c(ψ)</sup></p>
+      <div class="score-scale" role="img" aria-label="Escala del score: 0 normal, 0.5 sin estructura, 1 anómalo">
+        <span><b>≈ 0</b> muy normal<br><small>necesita muchos cortes</small></span><span><b>≈ 0.5</b> sin estructura<br><small>E[h] ≈ c(ψ)</small></span><span><b>→ 1</b> muy anómalo<br><small>se aísla enseguida</small></span>
+      </div>
+      <p class="fine">Para decidir qué es "anómalo" se elige un <span data-term="umbral">umbral</span> sobre el score (lo verás en el capítulo 2). Hay dos fuentes de azar: <b>qué puntos</b> ve cada árbol (submuestra) y <b>dónde corta</b> (variable y valor). De ahí salen los hiperparámetros del capítulo 2. (Liu et al., <a class="cite" href="#ref-liu2008">2008</a>).</p>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch1"></div>
+    <div class="checks" data-checks="ch1"></div>
+    <footer class="ch-next"><a class="btn primary" href="#ch2">Siguiente: 2 · Laboratorio →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 2 ============================ -->
+  <section class="chapter wrap" id="ch2" aria-labelledby="ch2-t">
+    <header class="ch-head"><span class="ch-num">2</span><div><p class="ch-kicker">Capítulo 2 · ≈ 12 min</p><h2 id="ch2-t">Laboratorio: mueve un hiperparámetro y mira qué cambia</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>decir qué controla cada <span data-term="hiperparametro">hiperparámetro</span> de Isolation Forest y qué pasa al subirlo o bajarlo;</li>
+      <li>distinguir lo que afecta al <b>ranking</b> (bosque) de lo que afecta solo a la <b>decisión</b> (umbral);</li>
+      <li>reconocer cuándo subir un valor <b>deja de mejorar</b> (el <span data-term="plateau">plateau</span>) y cuándo no existe un valor universal.</li>
+    </ul></div>
+
+    <div class="sub-head" id="lessons">
+      <h3>Empieza por un escenario guiado <span class="opt">(opcional)</span></h3>
+      <p>Cada uno carga datos y parámetros para ver un concepto concreto. Después explora libremente.</p>
     </div>
     <div class="lesson-chips" id="lessonChips" role="tablist" aria-label="Escenarios guiados"></div>
     <div class="card lesson-body" id="lessonBody" aria-live="polite"></div>
-  </section>
 
-  <!-- LABORATORIO -->
-  <section class="wrap section" id="lab">
-    <div class="lab">
+    <div class="lab" id="lab">
       <!-- Controles -->
       <aside class="lab-controls" id="controls" aria-label="Controles del modelo">
         <div class="mini-metrics" id="miniMetrics" aria-live="polite"></div>
@@ -65,7 +159,7 @@
           <p class="ds-blurb" id="dsBlurb"></p>
           <div class="row-ctl">
             <label for="fracRange" data-tip="<span class='tip-h'>% real de anomalías</span>Cuántas de las observaciones son anomalías de verdad en este conjunto sintético. Es el valor que <b>contamination</b> intenta aproximar.">Anomalías reales: <b id="fracVal">6%</b></label>
-            <input type="range" id="fracRange" min="1" max="15" step="0.5" value="6">
+            <input type="range" id="fracRange" min="0.5" max="15" step="0.5" value="6">
           </div>
           <div class="row-ctl inline">
             <label for="nSel">Puntos</label>
@@ -85,7 +179,7 @@
       <div class="card map-card" id="card-map">
         <div class="map-toolbar">
           <div class="seg" role="group" aria-label="Vista">
-            <button type="button" id="viewMap" aria-pressed="true" data-tip="<span class='tip-h'>Mapa de scores</span>Colorea todo el plano según el score que el bosque asignaría a un punto en esa posición. La línea punteada es el umbral de decisión.">Mapa de scores</button>
+            <button type="button" id="viewMap" aria-pressed="true" data-tip="<span class='tip-h'>Mapa de scores</span>Colorea todo el plano según el score que el bosque asignaría a un punto en esa posición. La línea punteada es el <span class='tip-sub'>umbral de decisión.</span>">Mapa de scores</button>
             <button type="button" id="viewTree" aria-pressed="false" data-tip="<span class='tip-h'>Un árbol por dentro</span>Muestra las particiones aleatorias de un solo árbol y cómo se aísla el punto seleccionado.">Un árbol</button>
           </div>
           <div class="toggles">
@@ -151,13 +245,19 @@
         </div>
         <div class="tile-groups">
           <div class="tile-group">
-            <div class="tg-title" data-tip="Miden qué tan bien <b>ordena</b> el modelo (anomalías arriba). No dependen del umbral ni de <code>contamination</code>.">Calidad del ranking <small>sin umbral</small></div>
+            <div class="tg-title" data-tip="Miden qué tan bien <b>ordena</b> el modelo (anomalías arriba). No dependen del umbral ni de <code>contamination</code>. <b>Necesitan etiquetas.</b>">Calidad del ranking <span class="lbl need">necesita etiquetas</span><small>sin umbral</small></div>
             <div class="tiles" id="tilesRank"></div>
           </div>
           <div class="tile-group">
-            <div class="tg-title" data-tip="Miden qué tan bien <b>decide</b> el modelo una vez fijado el umbral. Dependen directamente de <code>contamination</code>.">Calidad de la decisión <small>con umbral</small></div>
+            <div class="tg-title" data-tip="Miden qué tan bien <b>decide</b> el modelo una vez fijado el umbral. Dependen directamente de <code>contamination</code>. <b>Necesitan etiquetas.</b>">Calidad de la decisión <span class="lbl need">necesita etiquetas</span><small>con umbral</small></div>
             <div class="tiles" id="tilesDec"></div>
           </div>
+        </div>
+        <div class="tile-group unsup-group">
+          <div class="tg-title tg-flex"><span data-tip="Lo que <b>sí puedes calcular en producción</b>, cuando no conoces la etiqueta real. Ninguno mide el acierto directamente: mira el capítulo 3.">Indicadores de producción <span class="lbl free">no necesitan etiquetas</span></span>
+            <span class="k-ctl"><label for="kSel" data-tip="<span class='tip-h'>k: tamaño de la lista de alertas</span>Cuántas alertas (las de mayor score) puede revisar tu equipo. Se usa en Precisión@k y en Jaccard@k.">Lista de alertas k:</label>
+              <select id="kSel"><option value="0.01">1 %</option><option value="0.02">2 %</option><option value="0.05" selected>5 %</option><option value="0.1">10 %</option></select></span></div>
+          <div class="tiles" id="tilesUnsup"></div>
         </div>
         <div class="reading" id="reading" aria-live="polite"></div>
       </section>
@@ -165,13 +265,13 @@
       <!-- Gráficas -->
       <div class="charts" id="charts">
         <article class="card chart-card" id="card-hist">
-          <header><h4>Distribución de scores</h4><p>¿Cuánto se separan normales y anómalos? La línea vertical es el umbral.</p></header>
+          <header><h4>Distribución de scores</h4><p>¿Cuánto se separan normales y anómalos? La línea vertical es el <span data-term="umbral">umbral</span>.</p></header>
           <div class="legend-inline"><span><i style="background:var(--s1)"></i>Normales (real)</span><span><i style="background:var(--s2)"></i>Anómalos (real)</span></div>
           <div class="chart" id="histChart" data-chart-tip></div>
         </article>
 
         <article class="card chart-card" id="card-roc">
-          <header><h4>Curvas ROC y Precisión–Recall</h4><p>Cada punto de la curva es un umbral posible. El punto <span class="ochip"></span> naranja es el umbral actual.</p></header>
+          <header><h4>Curvas ROC y <span data-term="pr">Precisión–Recall</span></h4><p>Cada punto de la curva es un umbral posible. El punto <span class="ochip"></span> naranja es el umbral actual.</p></header>
           <div class="two">
             <div><div class="mini-title" id="rocTitle">ROC</div><div class="chart" id="rocChart" data-chart-tip></div></div>
             <div><div class="mini-title" id="prTitle">Precisión–Recall</div><div class="chart" id="prChart" data-chart-tip></div></div>
@@ -181,7 +281,7 @@
         <article class="card chart-card wide" id="card-sweep">
           <header>
             <h4 id="sweepTitle">Barrido del hiperparámetro</h4>
-            <p id="sweepDesc">Reentrena el modelo con distintos valores del hiperparámetro activo (varias semillas cada uno) para ver su efecto real y su variabilidad.</p>
+            <p id="sweepDesc">Reentrena el modelo con distintos valores del hiperparámetro activo (varias semillas cada uno) para ver su efecto real, su variabilidad y su costo.</p>
           </header>
           <div class="sweep-ctl">
             <div class="seg" id="sweepMetricSeg" role="group" aria-label="Métrica del barrido">
@@ -192,7 +292,8 @@
             <span class="sweep-hint" id="sweepHint"></span>
           </div>
           <div class="chart" id="sweepChart" data-chart-tip></div>
-          <details class="table-view"><summary>Ver como tabla</summary><div id="sweepTable"></div></details>
+          <div class="insight" id="sweepInsight" aria-live="polite"></div>
+          <details class="table-view"><summary>Ver como tabla (incluye el costo en ms)</summary><div id="sweepTable"></div></details>
         </article>
 
         <article class="card chart-card" id="card-anat">
@@ -207,71 +308,256 @@
         </article>
 
         <article class="card chart-card" id="card-conv">
-          <header><h4>Convergencia con el nº de árboles</h4><p>Score de tres puntos a medida que se promedian más árboles. Si las líneas aún se mueven, faltan árboles.</p></header>
+          <header><h4>Convergencia con el nº de árboles</h4><p>Score de tres puntos a medida que se promedian más árboles. Si las líneas aún se mueven, faltan árboles; si están planas, ya estás en el <span data-term="plateau">plateau</span>.</p></header>
           <div class="chart" id="convChart" data-chart-tip></div>
         </article>
       </div>
     </div>
+
+    <div class="callout warn">
+      <h4>¿Más árboles siempre es mejor?</h4>
+      <p>Solo hasta el <b>plateau</b>. Más árboles reduce la <span data-term="ruido">varianza</span> (≈ 1/√T), pero no corrige el sesgo del modelo y cuesta tiempo y memoria de forma lineal. Pasar de 100 a 400 árboles solo divide el ruido entre 2 y multiplica el costo por 4. Por eso <code>n_estimators</code> no se "optimiza": se <b>fija</b> en un valor suficientemente alto. Compruébalo en el <b>Barrido</b> de <code>n_estimators</code> (escenario <i>Más árboles: ¿hasta cuándo?</i>). El argumento formal se demostró para Random Forest (<a class="cite" href="#ref-probst2018">Probst &amp; Boulesteix, 2018</a>) y en el paper original los autores observan que las longitudes de camino convergen bastante antes de 100 árboles (<a class="cite" href="#ref-liu2008">Liu et al., 2008</a>).</p>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch2"></div>
+    <div class="checks" data-checks="ch2"></div>
+    <footer class="ch-next"><a class="btn" href="#ch1">← 1 · La idea</a><a class="btn primary" href="#ch3">Siguiente: 3 · Evaluar →</a></footer>
   </section>
 
-  <!-- GUÍA -->
-  <section class="wrap section" id="guide">
-    <div class="section-head">
-      <h2>Cómo leer los indicadores</h2>
-      <p>Por qué estas métricas y estas gráficas, y qué hacer cuando no tienes etiquetas.</p>
+  <!-- ============================ CAPÍTULO 3 ============================ -->
+  <section class="chapter wrap" id="ch3" aria-labelledby="ch3-t">
+    <header class="ch-head"><span class="ch-num">3</span><div><p class="ch-kicker">Capítulo 3 · ≈ 8 min</p><h2 id="ch3-t">Evaluar: ¿cómo sé si mi detector es bueno?</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>elegir indicadores según <b>tengas o no etiquetas</b>;</li>
+      <li>calcular e interpretar el <span data-term="jaccard">índice de Jaccard</span> entre listas de alertas;</li>
+      <li>explicar por qué un indicador sin etiquetas puede <b>engañar</b> y cómo protegerte.</li>
+    </ul></div>
+
+    <div class="two-col">
+      <article class="card g-card"><h4>Con etiquetas (validación)</h4><p>Tienes algunos casos confirmados (anomalías y normales). Puedes medir el <b>acierto</b>: <span data-term="aucroc">ROC-AUC</span>, <span data-term="ap">AP</span>, <span data-term="patk">Precisión@k</span>. Es lo ideal, pero en la vida real las etiquetas escasean, llegan tarde o no cubren todos los tipos de anomalía (<a class="cite" href="#ref-campos2016">Campos et al., 2016</a>).</p></article>
+      <article class="card g-card"><h4>Sin etiquetas (producción)</h4><p>No conoces la verdad. No puedes medir el acierto, solo <b>proxies</b> de calidad: cuánto <b>cambia</b> el resultado entre semillas (estabilidad), cuánto se <b>concentra la masa</b> (Mass-Volume) o si otros métodos <b>coinciden</b>. Ayudan, pero cada uno tiene puntos ciegos.</p></article>
     </div>
-    <div class="guide-grid">
-      <article class="card g-card">
-        <h4>Ranking vs. decisión</h4>
-        <p>Un detector de anomalías hace <b>dos cosas</b>: (1) asigna un score a cada punto y (2) elige un umbral. Son problemas distintos y se evalúan con métricas distintas.</p>
-        <ul>
-          <li><b>ROC-AUC</b> y <b>AP</b> evalúan solo el paso 1. Son las que debes mirar para comparar hiperparámetros del <i>bosque</i>.</li>
-          <li><b>Precisión, Recall, F1</b> evalúan el paso 2 y dependen de <code>contamination</code>.</li>
-        </ul>
+
+    <h3 class="sub-title">Qué indicador usar y cuándo</h3>
+    <div class="table-wrap"><table class="ind-table">
+      <thead><tr><th>Indicador</th><th>¿Etiquetas?</th><th>Qué mide</th><th>Úsalo cuando…</th><th>Cuidado con…</th></tr></thead>
+      <tbody>
+        <tr><td><b>ROC-AUC</b></td><td class="y">Sí</td><td>Calidad del ranking completo</td><td>Comparar hiperparámetros o modelos con etiquetas</td><td>Optimista si las anomalías son muy raras (<a class="cite" href="#ref-saito2015">Saito &amp; Rehmsmeier, 2015</a>)</td></tr>
+        <tr><td><b>AP / PR-AUC</b></td><td class="y">Sí</td><td>Ranking penalizando falsas alarmas</td><td>Anomalías raras; una falsa alarma cuesta</td><td>Su línea base es la prevalencia: compara contra ella</td></tr>
+        <tr><td><b>Precisión@k</b></td><td class="y">Sí</td><td>Aciertos en la lista corta que revisarás</td><td>Capacidad de revisión limitada (k alertas)</td><td>Depende de k y es ruidosa con pocas anomalías (<a class="cite" href="#ref-campos2016">Campos et al., 2016</a>)</td></tr>
+        <tr><td><b>Precisión, Recall, F1</b></td><td class="y">Sí</td><td>Calidad de la <b>decisión</b> con un umbral</td><td>Ya fijaste el umbral / contamination</td><td>Cambian con el umbral; F1 da igual peso a errores de costo distinto</td></tr>
+        <tr class="sep"><td><b>Estabilidad Jaccard@k</b></td><td class="n">No</td><td>Cuánto cambia la lista de alertas entre semillas o reentrenos</td><td>Siempre: control de cordura y monitoreo</td><td><b>Estable ≠ correcto</b> (mira el anillo con max_features = 0.5)</td></tr>
+        <tr><td><b>Correlación de rangos</b> (Spearman)</td><td class="n">No</td><td>Coincidencia del orden completo</td><td>Comparar ejecuciones o versiones del modelo</td><td>Pesa igual el orden de los normales, que no importa</td></tr>
+        <tr><td><b>Mass-Volume / Excess-Mass</b></td><td class="n">No</td><td>Concentración de la masa en poco volumen (<a class="cite" href="#ref-goix2016">Goix, 2016</a>)</td><td>Comparar detectores o configuraciones en pocas dimensiones</td><td>Volumen difícil de estimar en alta dimensión; falla con cúmulos anómalos densos</td></tr>
+        <tr><td><b>Acuerdo con otro detector</b></td><td class="n">No</td><td>Consenso entre métodos distintos</td><td>Señal de estructura real</td><td>Si comparten el mismo punto ciego, el acuerdo engaña</td></tr>
+        <tr><td><b>IREOS</b> (evaluación interna)</td><td class="n">No</td><td>Qué tan separables son las anomalías marcadas del resto (<a class="cite" href="#ref-marques2020">Marques et al., 2020</a>)</td><td>Comparar soluciones sin etiquetas</td><td>Costoso; no está implementado en este laboratorio</td></tr>
+        <tr><td><b>Histograma de scores</b></td><td class="n">No</td><td>Separación visual: masa de scores bajos + cola separada</td><td>Primer vistazo, siempre</td><td>Subjetivo</td></tr>
+        <tr><td><b>Retroalimentación de analistas</b></td><td class="n">Semi</td><td>Utilidad real de las alertas</td><td>Ya en producción</td><td>Lenta y sesgada hacia lo ya alertado</td></tr>
+      </tbody></table></div>
+
+    <h3 class="sub-title">¿Y el Jaccard? Estabilidad entre semillas, en vivo</h3>
+    <div class="jac-row">
+      <article class="card chart-card">
+        <header><h4>Matriz de Jaccard</h4><p><span data-term="jaccard">J(A,B) = |A∩B| / |A∪B|</span>. Se entrena el modelo con 5 semillas y se compara la lista de las <b>k</b> alertas más altas de cada par. Usa la configuración actual del laboratorio (capítulo 2).</p></header>
+        <div class="chart" id="jacChart" data-chart-tip></div>
+        <p class="fine" id="unsupNote"></p>
       </article>
-      <article class="card g-card">
-        <h4>¿Por qué AP además de ROC-AUC?</h4>
-        <p>Con pocas anomalías (5 % o menos) el ROC-AUC puede verse casi perfecto aunque haya muchas falsas alarmas, porque el eje FPR se divide entre muchísimos normales. La <b>curva PR</b> y el <b>AP</b> castigan esas falsas alarmas y son más honestos en este contexto.</p>
-      </article>
-      <article class="card g-card">
-        <h4>Histograma de scores</h4>
-        <p>Es la gráfica que <b>sí puedes usar sin etiquetas</b>. Una buena configuración produce una masa grande de scores bajos y una cola clara y separada de scores altos. Si todo se concentra cerca de 0.5, el modelo no encuentra estructura.</p>
-      </article>
-      <article class="card g-card">
-        <h4>Barrido y semillas</h4>
-        <p>Una sola ejecución puede engañar por el azar. El barrido repite cada configuración con varias semillas y muestra <b>media y dispersión</b>: la práctica correcta al comparar hiperparámetros de modelos aleatorios.</p>
-      </article>
-      <article class="card g-card">
-        <h4>Sin etiquetas (el caso real)</h4>
-        <p>En producción no conoces la etiqueta real. Alternativas: revisar manualmente el <i>top-k</i> de scores, medir la <b>estabilidad</b> del ranking entre semillas, fijar el umbral con conocimiento del dominio, o validar con anomalías inyectadas sintéticamente.</p>
-      </article>
-      <article class="card g-card">
-        <h4>Limitaciones de Isolation Forest</h4>
-        <ul>
-          <li>Cortes paralelos a los ejes: dificultad con regiones huecas rodeadas de datos (anillo).</li>
-          <li>En alta dimensión con mucho ruido, las variables irrelevantes diluyen el aislamiento.</li>
-          <li>Anomalías agrupadas pueden enmascararse (masking).</li>
-          <li>Variantes: <i>Extended Isolation Forest</i> (cortes oblicuos).</li>
-        </ul>
+      <article class="card chart-card">
+        <header><h4>Curva Mass-Volume</h4><p><span data-term="mv">Volumen</span> mínimo necesario para capturar una fracción α de los datos con el score actual. Cuanto <b>más baja</b> la curva, más concentrada está la masa (<a class="cite" href="#ref-goix2016">Goix, 2016</a>).</p></header>
+        <div class="chart" id="mvChart" data-chart-tip></div>
+        <p class="fine">Ejemplo de Jaccard: dos listas de 25 alertas que comparten 20 puntos tienen J = 20 / 30 = 0.67, no 0.8: la unión es 30 puntos distintos.</p>
       </article>
     </div>
 
-    <div class="card refs">
-      <h4>Referencias</h4>
-      <ol>
-        <li>Liu, F. T., Ting, K. M., Zhou, Z.-H. (2008). <i>Isolation Forest.</i> IEEE ICDM. — el paper original.</li>
-        <li>Liu, F. T., Ting, K. M., Zhou, Z.-H. (2012). <i>Isolation-based anomaly detection.</i> ACM TKDD 6(1).</li>
-        <li>Hariri, S., Kind, M. C., Brunner, R. J. (2019). <i>Extended Isolation Forest.</i> IEEE TKDE.</li>
-        <li>scikit-learn: <code>sklearn.ensemble.IsolationForest</code> (las convenciones de este laboratorio siguen esta API).</li>
-      </ol>
+    <h3 class="sub-title">¿Sirven los indicadores sin etiquetas? Compruébalo</h3>
+    <p class="lead-s">Cada punto es una <b>configuración</b> de Isolation Forest (60 combinaciones de ψ, max_features y bootstrap; T = 300). El eje vertical es el AP <b>real</b>; el horizontal, un indicador que <i>no</i> usa etiquetas. Si los puntos suben hacia la derecha, el indicador sirve para elegir configuraciones sin conocer la verdad. <span class="lg-pair"><i style="background:var(--s1)"></i>max_features = 1.0 <i style="background:var(--s2)"></i>max_features = 0.5 <i class="ring"></i>valores por defecto</span></p>
+    <div class="px-ctl"><label>Datos <select id="pxDs"></select></label></div>
+    <div class="px-grid">
+      <div class="card chart-card"><div class="chart" id="pxMV" data-chart-tip></div></div>
+      <div class="card chart-card"><div class="chart" id="pxJac" data-chart-tip></div></div>
+      <div class="card chart-card"><div class="chart" id="pxAgree" data-chart-tip></div></div>
     </div>
+    <div class="reading" id="pxRead" aria-live="polite"></div>
+    <div class="callout">
+      <h4>Regla práctica</h4>
+      <p>Ningún indicador sin etiquetas es suficiente por sí solo. Combínalos: <b>estabilidad</b> (¿depende del azar?), <b>Mass-Volume o consenso</b> (¿tiene sentido geométrico?) y, sobre todo, <b>revisión manual del top-k por un experto</b> o un pequeño conjunto de anomalías conocidas/inyectadas. Resultados sobre estas limitaciones: (<a class="cite" href="#ref-goix2016">Goix, 2016</a>; <a class="cite" href="#ref-marques2020">Marques et al., 2020</a>; <a class="cite" href="#ref-domingues2018">Domingues et al., 2018</a>).</p>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch3"></div>
+    <div class="checks" data-checks="ch3"></div>
+    <footer class="ch-next"><a class="btn" href="#ch2">← 2 · Laboratorio</a><a class="btn primary" href="#ch4">Siguiente: 4 · Optimizar →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 4 ============================ -->
+  <section class="chapter wrap" id="ch4" aria-labelledby="ch4-t">
+    <header class="ch-head"><span class="ch-num">4</span><div><p class="ch-kicker">Capítulo 4 · ≈ 10 min</p><h2 id="ch4-t">Optimizar: por qué y cómo tunear hiperparámetros</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>explicar <b>por qué</b> hay que ajustar hiperparámetros y <b>cuáles no</b> vale la pena optimizar;</li>
+      <li>comparar grid, random, bayesiana y <i>successive halving</i> por su <b>costo</b>, no solo por su resultado;</li>
+      <li>decidir con qué <b>objetivo</b> optimizar cuando no tienes etiquetas, y qué riesgos corres.</li>
+    </ul></div>
+
+    <h3 class="sub-title">4.1 ¿Qué es y por qué hay que tunear?</h3>
+    <p class="lead-s">Un <span data-term="hiperparametro">hiperparámetro</span> se fija <i>antes</i> de entrenar y define <b>cómo</b> aprende el algoritmo; los parámetros (aquí, dónde corta cada árbol) los aprende él. Los valores por defecto son un compromiso para "datos promedio"; <b>tus datos no lo son</b>. Ajustarlos busca la configuración que mejor sirve <i>a tu problema</i>. Pero ojo: cuánto se gana depende de los datos (Probst et al., <a class="cite" href="#ref-probst2019">2019</a>, llaman a esa ganancia <span data-term="tunabilidad">tunabilidad</span>).</p>
+    <div class="card chart-card"><header><h4>Ganancia potencial de tunear en cada conjunto de datos</h4><p>AP con los valores por defecto (ψ = 256, max_features = 1.0, bootstrap = False, T = 300) frente a la mejor configuración del espacio explorado.</p></header><div id="tuneTable"></div></div>
+
+    <h3 class="sub-title">4.2 ¿Qué cambia cuando tuneas?</h3>
+    <div class="effects">
+      <div class="card eff"><b>Calidad</b><p>Más aciertos en el ranking (AP, ROC-AUC).</p></div>
+      <div class="card eff"><b>Estabilidad</b><p>Menos dependencia del azar entre reentrenos.</p></div>
+      <div class="card eff"><b>Costo</b><p>Tiempo de entrenamiento y de scoring, memoria y latencia.</p></div>
+      <div class="card eff"><b>Comparabilidad</b><p>Comparar modelos con configuraciones sin ajustar es injusto.</p></div>
+      <div class="card eff"><b>Decisión</b><p>El umbral (contamination) determina alertas, no la calidad del ranking.</p></div>
+    </div>
+
+    <h3 class="sub-title">4.3 Qué <u>no</u> optimizar</h3>
+    <div class="three-col">
+      <article class="card g-card"><h4><code>n_estimators</code></h4><p>Se <b>fija</b> en el plateau. Más árboles no daña, pero solo cuesta (<a class="cite" href="#ref-probst2018">Probst &amp; Boulesteix, 2018</a>). Úsalo como <i>recurso</i> (ver Successive Halving), no como hiperparámetro.</p></article>
+      <article class="card g-card"><h4><code>random_state</code></h4><p>Se fija para reproducir. Buscar la "mejor" semilla es sobreajustar al azar.</p></article>
+      <article class="card g-card"><h4><code>contamination</code></h4><p>Es una <b>decisión de negocio</b> (umbral / capacidad de revisión), no un ajuste del bosque. No cambia el ranking; optimizarlo para F1 con etiquetas escasas es engañoso (<a class="cite" href="#ref-perini2023">Perini et al., 2023</a>).</p></article>
+    </div>
+
+    <h3 class="sub-title">4.4 Métodos de búsqueda</h3>
+    <div class="methods">
+      <article class="card method"><h4>Manual</h4><p>Tú, tu intuición y experimentos como los del capítulo 2. Excelente para <i>entender</i>; poco reproducible y no escala.</p></article>
+      <article class="card method"><h4><span data-term="grid">Grid search</span></h4><p>Prueba todas las combinaciones de una malla. Simple y paralelizable, pero el costo crece <b>exponencialmente</b> con el nº de hiperparámetros y malgasta evaluaciones en los que no importan (<a class="cite" href="#ref-bergstra2012">Bergstra &amp; Bengio, 2012</a>).</p></article>
+      <article class="card method"><h4><span data-term="random">Random search</span></h4><p>Muestrea configuraciones al azar. Con el mismo presupuesto explora <b>más valores distintos</b> de cada hiperparámetro; es el punto de comparación obligado (<a class="cite" href="#ref-bergstra2012">Bergstra &amp; Bengio, 2012</a>).</p></article>
+      <article class="card method"><h4><span data-term="bayes">Optimización bayesiana</span></h4><p>Aprende un modelo (proceso gaussiano, TPE…) de cómo el hiperparámetro afecta la métrica y elige la siguiente prueba con más potencial. Ideal cuando <b>cada evaluación es cara</b> (<a class="cite" href="#ref-snoek2012">Snoek et al., 2012</a>; <a class="cite" href="#ref-bergstra2011">Bergstra et al., 2011</a>).</p></article>
+      <article class="card method"><h4><span data-term="halving">Successive Halving</span> / Hyperband</h4><p>Evalúa muchas configuraciones con <b>poca fidelidad</b> (pocos árboles) y solo promueve a las mejores a más recurso. Puede ser un orden de magnitud más rápido (<a class="cite" href="#ref-li2018">Li et al., 2018</a>; <a class="cite" href="#ref-jamieson2016">Jamieson &amp; Talwalkar, 2016</a>).</p></article>
+      <article class="card method"><h4>Evolutivos / CMA-ES</h4><p>Poblaciones de configuraciones que "mutan" y se seleccionan. Útiles en espacios complejos o mixtos; Optuna los ofrece (<a class="cite" href="#ref-akiba2019">Akiba et al., 2019</a>). Panorama completo: <a class="cite" href="#ref-bischl2023">Bischl et al. (2023)</a>; libro de referencia: <a class="cite" href="#ref-hutter2019">Hutter et al. (2019)</a>.</p></article>
+    </div>
+
+    <div class="card chart-card gvr">
+      <header><h4>¿Por qué random suele vencer a grid?</h4><p>Con 9 evaluaciones y <b>un solo hiperparámetro que importa</b> (eje horizontal; la franja azul es la zona buena), el grid prueba solo 3 valores de él; el random prueba 9 distintos. Cuantos más hiperparámetros irrelevantes, mayor la diferencia (<a class="cite" href="#ref-bergstra2012">Bergstra &amp; Bengio, 2012</a>).</p></header>
+      <div class="chart" id="gvrFig"></div><button class="btn sm" type="button" id="gvrAgain">↻ Otra muestra aleatoria</button>
+    </div>
+
+    <h3 class="sub-title">4.5 Arena: compara métodos con el mismo presupuesto</h3>
+    <p class="lead-s">Isolation Forest con tres hiperparámetros a optimizar (ψ, max_features, bootstrap). Como el paisaje ya está calculado, se simulan <b>60 búsquedas</b> por método. El costo se mide en <b>árboles entrenados</b>. Cambia el <b>objetivo</b> del tuner a un indicador sin etiquetas y mira qué ocurre. <i>Prueba «Anomalías agrupadas» con Mass-Volume.</i></p>
+    <div id="tuningArena"></div>
+    <p class="fine">El paisaje se calculó con 3 semillas por configuración sobre los conjuntos del laboratorio (500 puntos, 6 % de anomalías). Es un <i>benchmark tabular</i>, la técnica estándar para comparar optimizadores sin repetir entrenamientos; el script <code>tools/build-landscape.js</code> lo reproduce.</p>
+
+    <h3 class="sub-title">4.6 Cómo hacerlo bien</h3>
+    <div class="two-col">
+      <article class="card g-card"><h4>Buenas prácticas</h4><ul>
+        <li>Separa <b>validación</b> (para elegir) de <b>prueba final</b> (para reportar); si no, el ganador queda optimista.</li>
+        <li>Evalúa cada configuración con <b>varias semillas</b> y compara media ± desviación.</li>
+        <li>Fija un <b>presupuesto</b> y un criterio de parada; empieza con random search como referencia.</li>
+        <li>Espacio: ψ en escala <b>logarítmica</b>; fija T y random_state.</li>
+        <li>Evita <span data-term="leakage">fugas de información</span>: nada de la prueba entra a entrenar ni a decidir.</li>
+        <li>Sin etiquetas: optimiza un proxy <b>y</b> valida con anomalías conocidas o revisión manual.</li>
+      </ul></article>
+      <article class="card g-card"><h4>Ejemplo en Python (con etiquetas de validación)</h4>
+<pre class="code"><code>from sklearn.ensemble import IsolationForest
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
+from sklearn.metrics import average_precision_score
+
+def ap_scorer(est, X, y):                 # y: 1 = anomalía (solo para validar)
+    return average_precision_score(y, -est.score_samples(X))
+
+search = RandomizedSearchCV(
+    IsolationForest(n_estimators=300, random_state=0),   # T fijo y alto
+    {"max_samples": [16, 32, 64, 128, 256, 500],
+     "max_features": [0.5, 1.0], "bootstrap": [False, True]},
+    n_iter=12, scoring=ap_scorer, random_state=0,
+    cv=StratifiedKFold(3, shuffle=True, random_state=0))
+search.fit(X, y)     # el modelo ignora y al entrenar; solo se usa al puntuar</code></pre>
+        <p class="fine">La API es la de scikit-learn (<a class="cite" href="#ref-pedregosa2011">Pedregosa et al., 2011</a>). Para búsquedas más largas: Optuna (<a class="cite" href="#ref-akiba2019">Akiba et al., 2019</a>) ofrece muestreadores bayesianos y <i>pruning</i>.</p></article>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch4"></div>
+    <div class="checks" data-checks="ch4"></div>
+    <footer class="ch-next"><a class="btn" href="#ch3">← 3 · Evaluar</a><a class="btn primary" href="#ch5">Siguiente: 5 · Casos reales →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 5 ============================ -->
+  <section class="chapter wrap" id="ch5" aria-labelledby="ch5-t">
+    <header class="ch-head"><span class="ch-num">5</span><div><p class="ch-kicker">Capítulo 5 · ≈ 6 min</p><h2 id="ch5-t">Casos de la vida real</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>traducir cada hiperparámetro a una <b>decisión de negocio</b>;</li>
+      <li>elegir el indicador correcto según la capacidad de revisión y el costo de los errores;</li>
+      <li>anticipar la trampa típica de cada dominio.</li>
+    </ul></div>
+    <p class="lead-s">Los conjuntos del laboratorio son sintéticos; estos casos muestran cómo se traducen los conceptos. Los datos citados con cifras provienen de las referencias; el resto son situaciones típicas descritas de forma ilustrativa.</p>
+    <div class="case-tabs" id="casesTabs" role="tablist" aria-label="Casos"></div>
+    <article class="card case-body" id="caseBody" aria-live="polite"></article>
+    <div class="takeaways" data-takeaways="ch5"></div>
+    <div class="checks" data-checks="ch5"></div>
+    <footer class="ch-next"><a class="btn" href="#ch4">← 4 · Optimizar</a><a class="btn primary" href="#ch6">Siguiente: 6 · Checklist →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 6 ============================ -->
+  <section class="chapter wrap" id="ch6" aria-labelledby="ch6-t">
+    <header class="ch-head"><span class="ch-num">6</span><div><p class="ch-kicker">Capítulo 6 · ≈ 4 min</p><h2 id="ch6-t">Checklist, errores comunes y límites</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>seguir un <b>flujo de trabajo</b> ordenado desde la definición del problema hasta el monitoreo;</li>
+      <li>reconocer los <b>errores más comunes</b> al tunear y evaluar detectores de anomalías;</li>
+      <li>conocer los <b>límites</b> de Isolation Forest y cuándo pensar en alternativas.</li>
+    </ul></div>
+    <div class="two-col">
+      <article class="card g-card"><h4>Flujo de trabajo recomendado</h4>
+        <ol class="steps">
+          <li><b>Define el costo de los errores</b> y la capacidad de revisión (k). Eso fija el umbral, no el bosque.</li>
+          <li><b>Elige cómo validar</b>: etiquetas parciales, anomalías inyectadas o revisión manual.</li>
+          <li><b>Fija</b> <code>n_estimators</code> en el plateau y <code>random_state</code>.</li>
+          <li><b>Busca</b> <code>max_samples</code> y <code>max_features</code> (random search, ≥ 3 semillas, ~30–60 pruebas).</li>
+          <li><b>Evalúa</b> con AP y Precisión@k (con etiquetas) y con estabilidad + Mass-Volume + revisión (sin ellas).</li>
+          <li><b>Decide el umbral</b> con la curva PR y la capacidad del equipo.</li>
+          <li><b>Monitorea</b>: estabilidad entre reentrenos y deriva de datos.</li>
+        </ol></article>
+      <article class="card g-card"><h4>Errores comunes</h4><ul>
+        <li>Creer que más árboles siempre mejora → <b>plateau</b>.</li>
+        <li>Optimizar <code>contamination</code> como si fuera del modelo → es el <b>umbral</b>.</li>
+        <li>Reportar ROC-AUC con anomalías muy raras → usa AP y P@k.</li>
+        <li>Confiar en un solo indicador sin etiquetas → tienen <b>puntos ciegos</b>.</li>
+        <li>Elegir la mejor semilla → sobreajuste al azar.</li>
+        <li>Borrar automáticamente lo marcado → puede eliminar casos raros pero legítimos.</li>
+      </ul>
+      <h4 style="margin-top:14px">Límites de Isolation Forest</h4><ul>
+        <li>Cortes paralelos a los ejes: artefactos y dificultad con estructuras oblicuas (variante: <i>Extended Isolation Forest</i>, <a class="cite" href="#ref-hariri2021">Hariri et al., 2021</a>).</li>
+        <li>En alta dimensión con mucho ruido, las variables irrelevantes diluyen el aislamiento.</li>
+        <li>Anomalías agrupadas pueden enmascararse (<span data-term="masking">masking</span>) y normales cercanos confundirse (<span data-term="swamping">swamping</span>).</li>
+      </ul></article>
+    </div>
+    <div class="checks" data-checks="ch6"></div>
+    <footer class="ch-next"><a class="btn" href="#ch5">← 5 · Casos reales</a><a class="btn primary" href="#refs">Bibliografía ↓</a></footer>
+  </section>
+
+  <!-- ============================ BIBLIOGRAFÍA ============================ -->
+  <section class="chapter wrap" id="refs" aria-labelledby="refs-t">
+    <header class="ch-head"><span class="ch-num">★</span><div><p class="ch-kicker">Referencias</p><h2 id="refs-t">Bibliografía</h2></div></header>
+    <p class="lead-s"><b>✔</b> = ficha y contenido consultados en la fuente (texto completo o resumen oficial) al preparar este material. Datos menores como páginas, volumen o año de la versión final conviene contrastarlos con la fuente antes de una cita formal. Sin ✔: referencias estándar que no se consultaron directamente en esta revisión.</p>
+    <div class="card refs-card"><ol class="refs-list">
+      <li id="ref-liu2008">✔ Liu, F. T., Ting, K. M., &amp; Zhou, Z.-H. (2008). <i>Isolation Forest.</i> Proc. IEEE International Conference on Data Mining (ICDM), 413–422. doi:10.1109/ICDM.2008.17</li>
+      <li id="ref-liu2012">✔ Liu, F. T., Ting, K. M., &amp; Zhou, Z.-H. (2012). <i>Isolation-based anomaly detection.</i> ACM Transactions on Knowledge Discovery from Data, 6(1), 3.</li>
+      <li id="ref-hariri2021">✔ Hariri, S., Kind, M. C., &amp; Brunner, R. J. (2021). <i>Extended Isolation Forest.</i> IEEE Transactions on Knowledge and Data Engineering, 33(4), 1479–1489. <a href="https://ieeexplore.ieee.org/document/8888179">ieeexplore.ieee.org/document/8888179</a></li>
+      <li id="ref-probst2018">✔ Probst, P., &amp; Boulesteix, A.-L. (2018). <i>To tune or not to tune the number of trees in random forest.</i> Journal of Machine Learning Research, 18(181), 1–18. <a href="https://jmlr.org/papers/v18/17-269.html">jmlr.org/papers/v18/17-269.html</a></li>
+      <li id="ref-probst2019">✔ Probst, P., Boulesteix, A.-L., &amp; Bischl, B. (2019). <i>Tunability: Importance of hyperparameters of machine learning algorithms.</i> Journal of Machine Learning Research, 20(53), 1–32. <a href="https://jmlr.org/papers/v20/18-444.html">jmlr.org/papers/v20/18-444.html</a></li>
+      <li id="ref-bergstra2012">✔ Bergstra, J., &amp; Bengio, Y. (2012). <i>Random search for hyper-parameter optimization.</i> Journal of Machine Learning Research, 13, 281–305.</li>
+      <li id="ref-bergstra2011">✔ Bergstra, J., Bardenet, R., Bengio, Y., &amp; Kégl, B. (2011). <i>Algorithms for hyper-parameter optimization.</i> Advances in Neural Information Processing Systems 24 (NIPS).</li>
+      <li id="ref-snoek2012">✔ Snoek, J., Larochelle, H., &amp; Adams, R. P. (2012). <i>Practical Bayesian optimization of machine learning algorithms.</i> Advances in Neural Information Processing Systems 25 (NIPS). <a href="https://arxiv.org/abs/1206.2944">arXiv:1206.2944</a></li>
+      <li id="ref-li2018">✔ Li, L., Jamieson, K., DeSalvo, G., Rostamizadeh, A., &amp; Talwalkar, A. (2018). <i>Hyperband: A novel bandit-based approach to hyperparameter optimization.</i> Journal of Machine Learning Research, 18(185), 1–52.</li>
+      <li id="ref-jamieson2016">Jamieson, K., &amp; Talwalkar, A. (2016). <i>Non-stochastic best arm identification and hyperparameter optimization.</i> Proc. AISTATS (PMLR 51), 240–248.</li>
+      <li id="ref-akiba2019">✔ Akiba, T., Sano, S., Yanase, T., Ohta, T., &amp; Koyama, M. (2019). <i>Optuna: A next-generation hyperparameter optimization framework.</i> Proc. ACM SIGKDD (KDD), 2623–2631. doi:10.1145/3292500.3330701</li>
+      <li id="ref-bischl2023">✔ Bischl, B., Binder, M., Lang, M., et al. (2023). <i>Hyperparameter optimization: Foundations, algorithms, best practices, and open challenges.</i> WIREs Data Mining and Knowledge Discovery, 13(2), e1484.</li>
+      <li id="ref-goix2016">✔ Goix, N. (2016). <i>How to evaluate the quality of unsupervised anomaly detection algorithms?</i> ICML 2016 Workshop on Anomaly Detection. <a href="https://arxiv.org/abs/1607.01152">arXiv:1607.01152</a></li>
+      <li id="ref-campos2016">✔ Campos, G. O., Zimek, A., Sander, J., Campello, R. J. G. B., Micenková, B., Schubert, E., Assent, I., &amp; Houle, M. E. (2016). <i>On the evaluation of unsupervised outlier detection: measures, datasets, and an empirical study.</i> Data Mining and Knowledge Discovery, 30(4), 891–927. doi:10.1007/s10618-015-0444-8</li>
+      <li id="ref-marques2020">✔ Marques, H. O., Campello, R. J. G. B., Sander, J., &amp; Zimek, A. (2020). <i>Internal evaluation of unsupervised outlier detection.</i> ACM Transactions on Knowledge Discovery from Data, 14(4), 47. doi:10.1145/3394053</li>
+      <li id="ref-domingues2018">✔ Domingues, R., Filippone, M., Michiardi, P., &amp; Zouaoui, J. (2018). <i>A comparative evaluation of outlier detection algorithms: Experiments and analyses.</i> Pattern Recognition, 74, 406–421. doi:10.1016/j.patcog.2017.09.037</li>
+      <li id="ref-perini2023">✔ Perini, L., Bürkner, P.-C., &amp; Klami, A. (2023). <i>Estimating the contamination factor's distribution in unsupervised anomaly detection.</i> Proc. ICML (PMLR 202). <a href="https://arxiv.org/abs/2210.10487">arXiv:2210.10487</a></li>
+      <li id="ref-saito2015">✔ Saito, T., &amp; Rehmsmeier, M. (2015). <i>The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets.</i> PLoS ONE, 10(3), e0118432. doi:10.1371/journal.pone.0118432</li>
+      <li id="ref-dalpozzolo2015">Dal Pozzolo, A., Caelen, O., Johnson, R. A., &amp; Bontempi, G. (2015). <i>Calibrating probability with undersampling for unbalanced classification.</i> IEEE Symposium on Computational Intelligence and Data Mining (CIDM). Conjunto de datos de Worldline y ULB Machine Learning Group, <a href="https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud">kaggle.com/datasets/mlg-ulb/creditcardfraud</a>: <b>✔</b> cifras verificadas en la ficha pública (492 fraudes en 284 807 transacciones, 0.172 %).</li>
+      <li id="ref-oshiro2012">Oshiro, T. M., Perez, P. S., &amp; Baranauskas, J. A. (2012). <i>How many trees in a random forest?</i> Machine Learning and Data Mining in Pattern Recognition (MLDM), LNCS 7376, 154–168. (Citado en Probst &amp; Boulesteix, 2018: el AUC deja de mejorar de forma apreciable tras ~128 árboles en 29 conjuntos.)</li>
+      <li id="ref-pedregosa2011">Pedregosa, F., et al. (2011). <i>Scikit-learn: Machine learning in Python.</i> Journal of Machine Learning Research, 12, 2825–2830. (Implementación de referencia: <code>sklearn.ensemble.IsolationForest</code>.)</li>
+      <li id="ref-hutter2019">Hutter, F., Kotthoff, L., &amp; Vanschoren, J. (Eds.) (2019). <i>Automated Machine Learning: Methods, Systems, Challenges.</i> Springer.</li>
+    </ol></div>
   </section>
 </main>
 
 <footer class="site-footer">
   <div class="wrap">
     <div><b>ML Hyperparameter Lab</b> · Isolation Forest implementado desde cero en JavaScript; sin servidor, sin datos que salgan de tu navegador.</div>
-    <div><a href="../../index.html">← Más algoritmos</a></div>
+    <div><a href="../../index.html">← Más algoritmos</a> · <a href="#top">Volver arriba ↑</a></div>
   </div>
 </footer>
 
@@ -279,8 +565,15 @@
 <script src="iforest.js"></script>
 <script src="../../assets/js/core/metrics.js"></script>
 <script src="../../assets/js/core/datasets.js"></script>
+<script src="../../assets/js/core/unsup.js"></script>
+<script src="../../assets/js/core/tuning.js"></script>
+<script src="landscape.js"></script>
 <script src="content.js"></script>
 <script src="charts.js"></script>
+<script src="charts2.js"></script>
 <script src="app.js"></script>
+<script src="race.js"></script>
+<script src="tuning-ui.js"></script>
+<script src="chapters.js"></script>
 </body>
 </html>
