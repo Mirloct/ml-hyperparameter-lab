@@ -1,0 +1,35 @@
+/* Estilos específicos del laboratorio de Gradient Boosting.
+ * Los componentes compartidos por varios cursos (.force-grid, .grid-ctl, .order-steps, .ep-row)
+ * viven en assets/css/chapters.css. */
+
+/* Mapa de decisión */
+#mapCanvas { width: 100%; display: block; border-radius: 10px; }
+.map-card .map-body { align-items: start; }
+.map-card .canvas-wrap { max-width: 520px; }
+
+/* Selector de árbol / ronda */
+.tc-row { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: var(--ink-2); margin-bottom: 8px; }
+.tc-row .foot-label { text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.06em; }
+#treeChart { max-width: 340px; margin-inline: auto; }
+
+/* Ficha del punto seleccionado */
+#selInfo { font-size: 0.86rem; display: grid; gap: 3px; }
+#selInfo .kv { display: flex; justify-content: space-between; gap: 10px; }
+#selInfo .kv span { color: var(--ink-2); }
+#selInfo .mono { font-family: var(--mono); font-size: 0.8rem; }
+
+/* Tiles: tres grupos de ancho desigual */
+.metrics-wrap .tile-groups { grid-template-columns: 1.5fr 1fr 0.8fr; align-items: start; }
+.metrics-wrap .tiles { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); }
+.metrics-wrap .tile .t-label { white-space: normal; line-height: 1.25; min-height: 2.4em; align-items: flex-start; }
+
+/* Cuadrícula del capítulo 4 */
+#hmChart svg text { font-size: 11px; fill: var(--ink-2); }
+#hmChart svg text.title { fill: var(--ink-2); font-size: 11px; }
+
+@media (max-width: 1100px) {
+  .metrics-wrap .tile-groups { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .metrics-wrap .tile-groups { grid-template-columns: 1fr; }
+}

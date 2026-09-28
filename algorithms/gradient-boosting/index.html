@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gradient Boosting / XGBoost · Laboratorio de hiperparámetros</title>
+  <meta name="description" content="Curso interactivo sobre Gradient Boosting y XGBoost: boosting secuencial con gradiente y hessiano, el equilibrio learning_rate–n_estimators, sobreajuste y early stopping, regularización, optimización de hiperparámetros y casos reales.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M6 24l6-6 5 4 9-11' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='11' r='3' fill='%23eb6834'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../../assets/css/site.css">
+  <link rel="stylesheet" href="../../assets/css/lab.css">
+  <link rel="stylesheet" href="../../assets/css/chapters.css">
+  <link rel="stylesheet" href="gb.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../../index.html" aria-label="ML Hyperparameter Lab, inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M16 5v22M6 13h20M6 20h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="24" cy="23" r="2.6" fill="var(--s2)"/></svg>
+      <span>ML Hyperparameter Lab</span>
+    </a>
+    <span class="crumb">Gradient Boosting</span>
+    <nav class="nav" aria-label="Sitio">
+      <a href="../../index.html">Algoritmos</a>
+      <a href="../isolation-forest/">Isolation Forest</a>
+      <a href="../vae/">VAE</a>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Cambiar tema claro/oscuro" data-tip="Cambiar entre tema claro y oscuro">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<nav class="chapnav" aria-label="Capítulos">
+  <div class="wrap">
+    <ol id="chapList">
+      <li><a href="#ch1" data-ch="ch1"><b>1</b><span>La idea</span></a></li>
+      <li><a href="#ch2" data-ch="ch2"><b>2</b><span>Laboratorio</span></a></li>
+      <li><a href="#ch3" data-ch="ch3"><b>3</b><span>Evaluar</span></a></li>
+      <li><a href="#ch4" data-ch="ch4"><b>4</b><span>Optimizar</span></a></li>
+      <li><a href="#ch5" data-ch="ch5"><b>5</b><span>Casos reales</span></a></li>
+      <li><a href="#ch6" data-ch="ch6"><b>6</b><span>Checklist</span></a></li>
+      <li><a href="#refs" data-ch="refs"><b>★</b><span>Bibliografía</span></a></li>
+    </ol>
+  </div>
+  <div class="progress" aria-hidden="true"><i id="progBar"></i></div>
+</nav>
+
+<main>
+  <!-- ============================ PORTADA ============================ -->
+  <section class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Machine Learning · Supervisado · Laboratorio 03</p>
+        <h1>Gradient Boosting: muchos árboles <span class="grad">que se corrigen entre sí</span></h1>
+        <p class="lead">El modelo que gana casi todo con datos tabulares. Aquí se entrena <b>de verdad, en tu navegador</b>, con la misma matemática que XGBoost —gradiente, hessiano y objetivo regularizado— para que veas por qué <b>más rondas no siempre es mejor</b> y qué <span data-term="hiperparametro">hiperparámetro</span> frena cada tipo de error.</p>
+        <div class="hero-cta"><a class="btn primary" href="#ch1">Empezar por la idea →</a><a class="btn" href="#ch2">Ir directo al laboratorio</a></div>
+      </div>
+      <figure class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 380 240" role="presentation">
+          <rect x="1" y="1" width="378" height="238" rx="18" fill="var(--surface)" stroke="var(--border-strong)"/>
+          <g stroke="var(--axis)" stroke-width="1.4" fill="none">
+            <path d="M40 40v76M24 78h32"/><path d="M150 40v76M134 78h32"/><path d="M260 40v76M244 78h32"/>
+          </g>
+          <g font-size="10.5" fill="var(--ink-2)" font-family="var(--font)" text-anchor="middle">
+            <text x="40" y="132">árbol 1</text><text x="150" y="132">árbol 2</text><text x="260" y="132">árbol 3</text><text x="345" y="132">…</text>
+          </g>
+          <g fill="var(--s2)" opacity=".85"><rect x="28" y="46" width="24" height="12" rx="3"/><rect x="138" y="58" width="24" height="9" rx="3"/><rect x="248" y="64" width="24" height="6" rx="3"/></g>
+          <g fill="var(--s1)" opacity=".85"><rect x="28" y="96" width="24" height="12" rx="3"/><rect x="138" y="90" width="24" height="9" rx="3"/><rect x="248" y="88" width="24" height="6" rx="3"/></g>
+          <text x="345" y="82" font-size="18" fill="var(--ink-2)" font-family="var(--font)" text-anchor="middle">+</text>
+          <path d="M30 196q80-34 160-44t160-6" fill="none" stroke="var(--s1)" stroke-width="2.4"/>
+          <path d="M30 200q80-30 150-24t170 34" fill="none" stroke="var(--s2)" stroke-width="2.4" stroke-dasharray="5 3"/>
+          <g font-size="10.5" fill="var(--ink-2)" font-family="var(--font)"><text x="30" y="224">rondas →</text><text x="252" y="224" fill="var(--s2)">validación</text><text x="196" y="170" fill="var(--s1)">entrenamiento</text></g>
+        </svg>
+      </figure>
+    </div>
+    <div class="wrap">
+      <h2 class="route-title">Ruta de lectura</h2>
+      <ol class="route">
+        <li><a href="#ch1"><span class="r-n">1</span><b>La idea</b><small>Corregir el error del anterior, ronda a ronda · ≈ 6 min</small></a></li>
+        <li><a href="#ch2"><span class="r-n">2</span><b>Laboratorio</b><small>Entrena y mueve los 8 hiperparámetros · ≈ 14 min</small></a></li>
+        <li><a href="#ch3"><span class="r-n">3</span><b>Evaluar</b><small>Sobreajuste, early stopping y calibración · ≈ 9 min</small></a></li>
+        <li><a href="#ch4"><span class="r-n">4</span><b>Optimizar</b><small>learning_rate y n_estimators, juntos · ≈ 9 min</small></a></li>
+        <li><a href="#ch5"><span class="r-n">5</span><b>Casos reales</b><small>Fraude, crédito, churn, anuncios, salud · ≈ 6 min</small></a></li>
+        <li><a href="#ch6"><span class="r-n">6</span><b>Checklist</b><small>Flujo, errores y límites · ≈ 4 min</small></a></li>
+      </ol>
+      <p class="route-note">¿Vienes de <a href="../isolation-forest/">Isolation Forest</a>? Allí los árboles eran <b>independientes y sin etiquetas</b>; aquí son <b>secuenciales y supervisados</b>, y esa diferencia cambia por completo qué significa "más árboles".</p>
+    </div>
+  </section>
+
+  <!-- ============================ CAPÍTULO 1 ============================ -->
+  <section class="chapter wrap" id="ch1" aria-labelledby="ch1-t">
+    <header class="ch-head"><span class="ch-num">1</span><div><p class="ch-kicker">Capítulo 1 · ≈ 6 min</p><h2 id="ch1-t">La idea: cada árbol corrige al anterior</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>explicar qué distingue al <span data-term="boosting">boosting</span> de un ensemble de <i>bagging</i> como Isolation Forest;</li>
+      <li>decir qué papel juegan el <span data-term="gradiente">gradiente</span> y el <span data-term="hessiano">hessiano</span> en cada ronda;</li>
+      <li>interpretar la fórmula de ganancia de XGBoost y para qué sirve cada término.</li>
+    </ul></div>
+
+    <div class="ideas">
+      <article class="card idea"><span class="num">1</span><h3>Un modelo débil no basta</h3><p>Un árbol pequeño (2–4 cortes) predice mal por sí solo: tiene mucho <b>sesgo</b>. La idea del boosting es no pedirle que acierte, sino que <i>mejore un poco</i> lo que ya hay.</p></article>
+      <article class="card idea"><span class="num">2</span><h3>Cada ronda ataca el error restante</h3><p>El árbol nuevo no se ajusta a las etiquetas, sino al <b>error actual</b> del modelo acumulado. Donde ya acierta, no hay nada que corregir; donde falla, ahí se concentra.</p></article>
+      <article class="card idea"><span class="num">3</span><h3>Y se suma con prudencia</h3><p>Cada corrección se multiplica por <code>learning_rate</code> antes de sumarse: muchos pasos pequeños generalizan mejor que uno grande (<span data-term="shrinkage">shrinkage</span>).</p></article>
+    </div>
+
+    <div class="card formula-card">
+      <h3>Bagging vs. boosting: la diferencia que lo cambia todo</h3>
+      <div class="force-grid">
+        <div class="force f-rec"><h4>Bagging (Isolation Forest, Random Forest)</h4><p>Árboles <b>independientes</b>, entrenados en paralelo sobre submuestras, cuyos resultados se <b>promedian</b>. Reducen la <b>varianza</b>. Más árboles nunca empeora: solo deja de ayudar.</p><span class="f-tag">promediar</span></div>
+        <div class="force f-vs">≠</div>
+        <div class="force f-kl"><h4>Boosting (este capítulo)</h4><p>Árboles <b>secuenciales</b>: cada uno se entrena sobre el error que dejó la suma de los anteriores. Reducen el <b>sesgo</b>. Más árboles <b>sí puede empeorar</b>: llega un punto en que se memoriza el ruido.</p><span class="f-tag">corregir</span></div>
+      </div>
+      <p>Por eso el consejo "sube <code>n_estimators</code> hasta el plateau y fíjalo", que era correcto en <a href="../isolation-forest/#ch2">Isolation Forest</a>, <b>no se traslada</b> aquí: en boosting el número de rondas es un hiperparámetro de verdad, y se decide mirando un conjunto de validación.</p>
+    </div>
+
+    <div class="card formula-card">
+      <h3>Qué ajusta exactamente cada árbol</h3>
+      <p>Tras <i>t</i> rondas el modelo tiene una predicción acumulada F(x). Para cada punto se calculan dos números de su pérdida:</p>
+      <p class="formula-big">g<sub>i</sub> = p<sub>i</sub> − y<sub>i</sub>&nbsp;&nbsp;&nbsp;&nbsp; h<sub>i</sub> = p<sub>i</sub>(1 − p<sub>i</sub>)</p>
+      <div class="force-grid">
+        <div class="force f-rec"><h4>El gradiente g</h4><p>«Hacia dónde y cuánto hay que mover la predicción de este punto.» Es simplemente <b>probabilidad predicha − etiqueta real</b>: grande donde el modelo se equivoca con confianza.</p><span class="f-tag">la dirección</span></div>
+        <div class="force f-vs">+</div>
+        <div class="force f-kl"><h4>El hessiano h</h4><p>«Cuánta confianza merece esa corrección.» Vale p(1−p): máximo (0.25) donde el modelo duda, casi cero donde ya está seguro. Es lo que hace de XGBoost un método de <b>segundo orden</b>.</p><span class="f-tag">la confianza</span></div>
+      </div>
+      <p>El árbol de esa ronda busca los cortes que mejor agrupan puntos con gradientes parecidos, y a cada hoja le asigna el peso óptimo:</p>
+      <p class="formula-big">w = −G / (H + λ)</p>
+      <p class="fine">Donde G y H son las sumas de g y h de los puntos que caen en esa hoja. Sin λ sería el ajuste exacto a esos puntos; con λ &gt; 0 el peso se <b>encoge</b> hacia 0, más cuanto menos peso acumule la hoja (<a class="cite" href="#ref-chen2016">Chen &amp; Guestrin, 2016</a>).</p>
+    </div>
+
+    <div class="card formula-card">
+      <h3>La fórmula de ganancia: qué corte vale la pena</h3>
+      <p>Antes de hacer un corte, XGBoost calcula cuánto reduciría la pérdida regularizada:</p>
+      <p class="formula-big">Ganancia = ½ [ G<sub>L</sub>²/(H<sub>L</sub>+λ) + G<sub>R</sub>²/(H<sub>R</sub>+λ) − G²/(H+λ) ] − γ</p>
+      <p>Los dos primeros términos son lo que "gana" cada lado por separado; el tercero, lo que ya se tenía sin cortar. Y al final se resta <b>γ</b>: el precio fijo de añadir una hoja más. Si el resultado no es positivo, <b>el corte no se hace</b> — es la <span data-term="poda">poda</span> integrada en la construcción.</p>
+      <p class="fine">Esta única fórmula contiene tres de los ocho hiperparámetros del capítulo 2: <code>lambda</code> (λ, en los denominadores), <code>gamma</code> (γ, el precio del corte) y, de forma implícita, <code>min_child_weight</code> (el mínimo de H que debe quedar a cada lado). Los verás moverse en vivo.</p>
+    </div>
+
+    <p class="fine">Historia breve: la idea de combinar modelos débiles viene de AdaBoost (<a class="cite" href="#ref-freund1997">Freund &amp; Schapire, 1997</a>); Friedman la reformuló como <b>descenso de gradiente en el espacio de funciones</b> (<a class="cite" href="#ref-friedman2001">Friedman, 2001</a>) y añadió el submuestreo estocástico (<a class="cite" href="#ref-friedman2002">Friedman, 2002</a>). XGBoost añadió el objetivo regularizado, el segundo orden y una implementación muy eficiente (<a class="cite" href="#ref-chen2016">Chen &amp; Guestrin, 2016</a>); LightGBM y CatBoost siguieron por ese camino (<a class="cite" href="#ref-ke2017">Ke et al., 2017</a>; <a class="cite" href="#ref-prokhorenkova2018">Prokhorenkova et al., 2018</a>).</p>
+    <div class="takeaways" data-takeaways="ch1"></div>
+    <div class="checks" data-checks="ch1"></div>
+    <footer class="ch-next"><a class="btn primary" href="#ch2">Siguiente: 2 · Laboratorio →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 2 ============================ -->
+  <section class="chapter wrap" id="ch2" aria-labelledby="ch2-t">
+    <header class="ch-head"><span class="ch-num">2</span><div><p class="ch-kicker">Capítulo 2 · ≈ 14 min</p><h2 id="ch2-t">Laboratorio: entrena ronda a ronda</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>reconocer el <span data-term="sobreajuste">sobreajuste</span> en la curva de pérdida y saber qué hiperparámetro tocar;</li>
+      <li>explicar por qué un <span data-term="tocon">tocón</span> no resuelve el tablero por muchas rondas que sumes;</li>
+      <li>distinguir los tres frenos de regularización (<code>gamma</code>, <code>lambda</code>, <code>min_child_weight</code>) y qué hace cada uno.</li>
+    </ul></div>
+
+    <div class="sub-head" id="lessons">
+      <h3>Empieza por un escenario guiado <span class="opt">(recomendado)</span></h3>
+      <p>Cada uno carga datos y parámetros para que veas un fenómeno concreto. Después explora libremente.</p>
+    </div>
+    <div class="lesson-chips" id="lessonChips" role="tablist" aria-label="Escenarios guiados"></div>
+    <div class="card lesson-body" id="lessonBody" aria-live="polite"></div>
+
+    <div class="lab" id="lab">
+      <aside class="lab-controls" aria-label="Controles">
+        <div class="mini-metrics" id="miniMetrics" aria-live="polite"></div>
+        <section class="cbox">
+          <h3><span class="step">1</span> Datos</h3>
+          <div class="ds-list" id="dsList" role="radiogroup" aria-label="Conjunto de datos"></div>
+          <p class="ds-blurb" id="dsBlurb"></p>
+          <div class="row-ctl inline"><label for="nSel">Puntos</label>
+            <select id="nSel"><option>150</option><option selected>300</option><option>600</option></select>
+            <label for="minorSel" data-tip="Proporción de la clase positiva. Con clases muy desbalanceadas, la exactitud deja de ser informativa.">Clase 1</label>
+            <select id="minorSel"><option value="0.5">50 % (balanceado)</option><option value="0.2">20 %</option><option value="0.06">6 % (rara)</option></select></div>
+          <div class="row-ctl"><label for="noiseRange" data-tip="Porcentaje de etiquetas cambiadas al azar. Simula el error inevitable de etiquetado: crea un suelo de error que ningún modelo puede bajar, y es lo que un modelo sobreajustado acaba memorizando.">Ruido de etiqueta: <b id="noiseVal">0%</b></label>
+            <input type="range" id="noiseRange" min="0" max="30" step="1" value="0"></div>
+        </section>
+        <section class="cbox">
+          <h3><span class="step">2</span> Hiperparámetros</h3>
+          <p class="hint">Cambiar cualquiera <b>reentrena desde cero</b>. Las rondas se añaden una a una con los botones.</p>
+          <div id="paramList"></div>
+        </section>
+      </aside>
+
+      <div class="card map-card" id="card-map">
+        <div class="map-toolbar"><h3 class="mc-title">Mapa de decisión</h3>
+          <div class="toggles">
+            <button class="btn sm" type="button" id="togHeat" aria-pressed="true" data-tip="Muestra u oculta el fondo con la probabilidad predicha en cada posición del plano.">Mapa de calor</button>
+            <button class="btn sm" type="button" id="togPoints" aria-pressed="true" data-tip="Muestra u oculta los puntos de entrenamiento.">Puntos</button>
+          </div></div>
+        <p class="axes-note" data-tip="<span class='tip-h'>¿Qué son los ejes?</span>Las <b>dos variables medidas</b> de cada observación, sin reducción de dimensionalidad. El color de fondo es la <b>probabilidad</b> que el modelo asigna a la clase 1 en esa posición; la línea marca la frontera p = 0.5.">
+          <b>Los ejes son las dos variables medidas</b> (x₁ y x₂). El fondo es la probabilidad predicha de clase 1: naranja = clase 1, azul = clase 0, y la línea es la frontera de decisión (p = 0.5). Los puntos con <b>borde blanco</b> son los que tienen la etiqueta cambiada por ruido; los rodeados por un aro, los que el modelo clasifica mal. <span class="an">Usamos 2 variables solo para poder dibujarlo; el algoritmo funciona igual con cientos.</span></p>
+        <div class="map-body">
+          <div class="canvas-wrap"><canvas id="mapCanvas" role="img" aria-label="Mapa de decisión: probabilidad predicha en cada posición del plano y puntos de entrenamiento"></canvas></div>
+          <div class="map-side">
+            <div class="legend" aria-label="Leyenda">
+              <div><span class="lg-dot" style="background:var(--s1)"></span>Clase 0</div>
+              <div><span class="lg-dot big" style="background:var(--s2)"></span>Clase 1</div>
+              <div><span class="lg-ring"></span>Mal clasificado</div>
+            </div>
+            <div class="sel-box" id="selInfo"></div>
+          </div>
+        </div>
+      </div>
+
+      <section class="metrics-wrap" id="metrics" aria-label="Métricas">
+        <div class="metrics-head"><h3>Resultados</h3></div>
+        <div class="tile-groups">
+          <div class="tile-group"><div class="tg-title" data-tip="La pérdida sobre los datos de entrenamiento, sobre los de validación y la diferencia entre ambas. La <b>brecha</b> es la señal de sobreajuste.">Ajuste y generalización <span class="lbl need">necesita etiquetas</span></div><div class="tiles" id="tiles-fit"></div></div>
+          <div class="tile-group"><div class="tg-title" data-tip="Calidad del <b>ranking</b> de probabilidades en validación, sin depender del umbral.">Calidad del ranking <span class="lbl need">necesita etiquetas</span></div><div class="tiles" id="tiles-rank"></div></div>
+          <div class="tile-group"><div class="tg-title" data-tip="Calidad de la <b>decisión</b> con el umbral 0.5.">Decisión <span class="lbl need">necesita etiquetas</span></div><div class="tiles" id="tiles-dec"></div></div>
+        </div>
+        <div class="reading" id="reading" aria-live="polite"></div>
+      </section>
+
+      <div class="charts" id="charts">
+        <article class="card chart-card wide" id="card-curve">
+          <header><h4>Curva de pérdida: entrenamiento vs. validación</h4><p>La gráfica más importante del capítulo. La línea continua (azul) es la pérdida sobre los datos de entrenamiento; la punteada (naranja), sobre datos que el modelo nunca vio. Si se separan, hay sobreajuste.</p></header>
+          <div class="sweep-ctl"><div class="seg" id="curveMetricSeg" role="group" aria-label="Métrica de la curva">
+            <button type="button" data-m="logloss" aria-pressed="true">Logloss</button>
+            <button type="button" data-m="acc" aria-pressed="false">Exactitud</button>
+          </div>
+          <div class="legend-inline"><span><i style="background:var(--s1)"></i>Entrenamiento</span><span><i style="background:var(--s2)"></i>Validación</span></div></div>
+          <div class="chart" id="curveChart" data-chart-tip></div>
+        </article>
+
+        <article class="card chart-card" id="card-tree">
+          <header><h4>Un árbol por dentro</h4><p>Los cortes del árbol de una ronda concreta y la corrección que aplica en cada región.</p></header>
+          <div class="tc-row"><span class="foot-label">Ronda</span>
+            <button class="btn sm" type="button" id="treePrev" aria-label="Árbol anterior">◀</button>
+            <b id="treeNum">1 / 1</b>
+            <button class="btn sm" type="button" id="treeNext" aria-label="Árbol siguiente">▶</button></div>
+          <div class="chart" id="treeChart"></div>
+          <p class="fine" id="treeNote"></p>
+        </article>
+
+        <article class="card chart-card" id="card-imp">
+          <header><h4>Importancia por ganancia</h4><p>Cuánta ganancia acumuló cada variable en todos los cortes de todos los árboles.</p></header>
+          <div class="chart" id="impChart"></div>
+          <p class="fine">En el tablero (XOR) ambas variables reparten la importancia; en «dos nubes» suele mandar una sola.</p>
+        </article>
+
+        <article class="card chart-card" id="card-hist">
+          <header><h4>Distribución de probabilidades (validación)</h4><p>¿Separa el modelo las dos clases? La línea vertical es el umbral 0.5.</p></header>
+          <div class="legend-inline"><span><i style="background:var(--s1)"></i>Clase 0</span><span><i style="background:var(--s2)"></i>Clase 1</span></div>
+          <div class="chart" id="histChart" data-chart-tip></div>
+        </article>
+
+        <article class="card chart-card" id="card-roc">
+          <header><h4>Curvas ROC y Precisión–Recall (validación)</h4><p>Cada punto es un umbral posible; el punto naranja es el umbral 0.5 actual.</p></header>
+          <div class="two">
+            <div><div class="mini-title">ROC</div><div class="chart" id="rocChart" data-chart-tip></div></div>
+            <div><div class="mini-title">Precisión–Recall</div><div class="chart" id="prChart" data-chart-tip></div></div>
+          </div>
+        </article>
+
+        <article class="card chart-card" id="card-cal">
+          <header><h4><span data-term="calibracion">Calibración</span></h4><p>De los puntos a los que el modelo dio ≈ 0.7 de probabilidad, ¿cuántos eran de verdad de clase 1? Sobre la diagonal = bien calibrado.</p></header>
+          <div class="chart" id="calChart" data-chart-tip></div>
+        </article>
+
+        <article class="card chart-card wide" id="card-sweep">
+          <header><h4 id="sweepTitle">Barrido</h4><p>Entrena varios modelos <b>desde cero</b> con distintos valores del hiperparámetro activo (2–3 semillas cada uno) y mide sobre el conjunto de validación.</p></header>
+          <div class="sweep-ctl"><div class="seg" id="sweepMetricSeg" role="group" aria-label="Métrica del barrido"></div><span class="sweep-hint" id="sweepHint"></span></div>
+          <div class="chart" id="sweepChart" data-chart-tip></div>
+          <div class="insight" id="sweepInsight" aria-live="polite"></div>
+          <details class="table-view"><summary>Ver como tabla</summary><div id="sweepTable"></div></details>
+        </article>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <h4>El error que hay que saber reconocer: seguir entrenando "por si acaso"</h4>
+      <p>En un ensemble de bagging, añadir árboles nunca empeora el modelo, así que se puede ser generoso. En boosting <b>no</b>: pasado el mínimo de validación, cada ronda extra empeora el modelo en datos nuevos aunque la pérdida de entrenamiento siga bajando y la exactitud de entrenamiento siga subiendo. Lo tramposo es que <b>todos los indicadores calculados sobre el entrenamiento mejoran</b> mientras el modelo se degrada. Se diagnostica con un conjunto de <b>validación separado</b> y se resuelve con <span data-term="early">early stopping</span>, no mirando la pérdida de entrenamiento.</p>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch2"></div>
+    <div class="checks" data-checks="ch2"></div>
+    <footer class="ch-next"><a class="btn" href="#ch1">← 1 · La idea</a><a class="btn primary" href="#ch3">Siguiente: 3 · Evaluar →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 3 ============================ -->
+  <section class="chapter wrap" id="ch3" aria-labelledby="ch3-t">
+    <header class="ch-head"><span class="ch-num">3</span><div><p class="ch-kicker">Capítulo 3 · ≈ 9 min</p><h2 id="ch3-t">Evaluar: ¿cómo sé si mi modelo es bueno?</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>explicar por qué la pérdida de <b>entrenamiento</b> nunca sirve para elegir un modelo;</li>
+      <li>elegir indicador según el uso: ranking, lista corta o probabilidad calibrada;</li>
+      <li>aplicar <span data-term="early">early stopping</span> correctamente, sin contaminar el conjunto de prueba.</li>
+    </ul></div>
+
+    <div class="callout">
+      <h4>La trampa número uno</h4>
+      <p>«Mi XGBoost tiene 99.8 % de exactitud.» ¿Sobre qué datos? En boosting, con profundidad suficiente y rondas suficientes, <b>siempre</b> se puede llegar a ~100 % sobre los datos de entrenamiento, incluso si las etiquetas fueran completamente aleatorias. Una métrica de entrenamiento no es un resultado: es, como mucho, una comprobación de que el código funciona.</p>
+    </div>
+
+    <h3 class="sub-title">Qué indicador usar y cuándo</h3>
+    <div class="ind-legend" role="note"><span><i class="sw-y"></i><b>Sí</b> · necesita etiquetas de validación</span><span><i class="sw-n"></i><b>No</b> · disponible sin etiquetas nuevas</span><span><i class="sw-s"></i><b>Parcial</b> · necesita además decidir un umbral o un k</span></div>
+    <div class="table-wrap"><table class="ind-table">
+      <thead><tr><th>Indicador</th><th>¿Necesita etiquetas?</th><th>Qué mide</th><th>Úsalo cuando…</th><th>Cuidado con…</th></tr></thead>
+      <tbody>
+        <tr><td><b>Logloss (validación)</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Calidad de las probabilidades, penalizando la confianza equivocada</td><td>Siempre: es lo que el modelo minimiza</td><td>Difícil de interpretar en términos de negocio por sí solo</td></tr>
+        <tr><td><b>Brecha train–val</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Cuánto memoriza el modelo frente a cuánto generaliza</td><td>Para diagnosticar sobreajuste y decidir regularización</td><td>Una brecha pequeña con pérdidas altas es <b>subajuste</b>, no éxito</td></tr>
+        <tr><td><b>ROC-AUC</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Calidad del <b>ranking</b> completo</td><td>El resultado se usa para ordenar (anuncios, colas de revisión)</td><td>Optimista cuando la clase positiva es muy rara (<a class="cite" href="#ref-saito2015gb">Saito &amp; Rehmsmeier, 2015</a>)</td></tr>
+        <tr><td><b>AP / PR-AUC</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Ranking penalizando falsos positivos</td><td>Clase positiva rara; una falsa alarma cuesta</td><td>Su línea base es la prevalencia: compárala siempre contra ella</td></tr>
+        <tr><td><b>Calibración</b></td><td class="lab-y"><span class="lab-pill">Sí</span></td><td>Si una probabilidad de 0.2 significa de verdad 20 %</td><td>La probabilidad se usa como número (precio, riesgo, umbral)</td><td>Un modelo puede tener AUC excelente y estar mal calibrado (<a class="cite" href="#ref-niculescu2005">Niculescu-Mizil &amp; Caruana, 2005</a>)</td></tr>
+        <tr class="sep"><td><b>Precisión, Recall, F1</b></td><td class="lab-s"><span class="lab-pill">Parcial</span></td><td>Calidad de la <b>decisión</b> una vez fijado un umbral</td><td>Ya decidiste el umbral operativo</td><td>Cambian por completo con el umbral; F1 pesa igual errores de costo distinto</td></tr>
+        <tr><td><b>Precisión@k</b></td><td class="lab-s"><span class="lab-pill">Parcial</span></td><td>Aciertos en la lista corta que se revisará</td><td>Capacidad de revisión limitada (k casos por día)</td><td>Depende de k; ruidosa con pocos positivos</td></tr>
+        <tr><td><b>Exactitud</b></td><td class="lab-s"><span class="lab-pill">Parcial</span></td><td>Fracción de aciertos con umbral 0.5</td><td>Clases equilibradas y errores de costo parecido</td><td>Con 5 % de positivos, predecir siempre "no" ya da 95 %</td></tr>
+        <tr><td><b>Importancia por ganancia</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>Qué variables usó el modelo para cortar</td><td>Revisión de cordura y detección de fugas de información</td><td>No es causalidad; variables correlacionadas se reparten la importancia de forma arbitraria</td></tr>
+        <tr><td><b>Curva de pérdida</b></td><td class="lab-n"><span class="lab-pill">No</span></td><td>La forma del entrenamiento: ¿converge? ¿sobreajusta?</td><td>Siempre; es el primer vistazo</td><td>Solo la de <b>validación</b> informa sobre generalización</td></tr>
+      </tbody></table></div>
+
+    <div class="two-col">
+      <article class="card g-card"><h4>Early stopping, bien hecho</h4>
+        <p>La receta es corta: fija <code>n_estimators</code> en un valor generoso y deja que el entrenamiento se detenga solo cuando la pérdida de validación no mejore durante <i>k</i> rondas seguidas (la "paciencia", típicamente 20–50).</p>
+        <ul>
+          <li>El conjunto con el que decides cuándo parar <b>ya no es imparcial</b>: participó en la decisión. Reserva un <b>tercer conjunto</b> (prueba) para el número que vas a reportar.</li>
+          <li>Con datos temporales (fraude, churn, CTR), el conjunto de validación debe ser <b>posterior</b> en el tiempo, no una muestra al azar: si no, estás prediciendo el pasado con información del futuro.</li>
+          <li>La ronda óptima cambia con <code>learning_rate</code>: por eso no se busca <code>n_estimators</code> como si fuera independiente (capítulo 4).</li>
+        </ul>
+        <p class="fine">En el laboratorio, la línea vertical de la curva de pérdida marca exactamente la ronda que habría elegido el early stopping.</p></article>
+      <article class="card g-card"><h4>Sobre la calibración, con honestidad</h4>
+        <p>El boosting con pérdida logística produce probabilidades razonablemente calibradas de partida — mejor que un SVM o un Random Forest sin ajustar, aunque tiende a ser algo <b>sobre-confiado</b> en los extremos cuando se entrena de más (<a class="cite" href="#ref-niculescu2005">Niculescu-Mizil &amp; Caruana, 2005</a>).</p>
+        <p>Si vas a usar la probabilidad como <b>número</b> (una tasa de interés, un riesgo clínico, una puja), mide la calibración explícitamente con el diagrama de fiabilidad del laboratorio y, si hace falta, recalíbrala (Platt scaling o regresión isotónica) sobre un conjunto separado. Si solo vas a <b>ordenar</b>, la calibración importa mucho menos.</p></article>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch3"></div>
+    <div class="checks" data-checks="ch3"></div>
+    <footer class="ch-next"><a class="btn" href="#ch2">← 2 · Laboratorio</a><a class="btn primary" href="#ch4">Siguiente: 4 · Optimizar →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 4 ============================ -->
+  <section class="chapter wrap" id="ch4" aria-labelledby="ch4-t">
+    <header class="ch-head"><span class="ch-num">4</span><div><p class="ch-kicker">Capítulo 4 · ≈ 9 min</p><h2 id="ch4-t">Optimizar: learning_rate y n_estimators no se ajustan por separado</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>ver por qué la pregunta "¿cuántas rondas?" no tiene respuesta sin decir con qué <code>learning_rate</code>;</li>
+      <li>ordenar el ajuste de los ocho hiperparámetros en tres fases;</li>
+      <li>aplicar el mismo criterio de <b>qué no optimizar</b> que en los demás modelos del sitio.</li>
+    </ul></div>
+
+    <h3 class="sub-title">4.1 Interacción: la cuadrícula learning_rate × n_estimators</h3>
+    <p class="lead-s">Cada casilla es un modelo evaluado sobre validación. Si los dos hiperparámetros fueran independientes, existiría un "mejor número de rondas" y un "mejor learning_rate" que se cruzarían en el óptimo. Lo que verás es una <b>diagonal</b>: cada learning_rate tiene su propio número óptimo de rondas, y cuanto menor es η, más rondas hacen falta.</p>
+    <div class="grid-ctl card">
+      <label>Métrica <select id="hmMetric">
+        <option value="val">Logloss de validación</option>
+        <option value="auc">ROC-AUC de validación</option>
+        <option value="gap">Brecha train–val</option>
+      </select></label>
+      <label>Datos <select id="hmDs"></select></label>
+      <label>Profundidad <select id="hmDepth"><option value="2">2</option><option value="3" selected>3</option><option value="5">5</option></select></label>
+      <label>Ruido <select id="hmNoise"><option value="0">0 %</option><option value="10" selected>10 %</option><option value="20">20 %</option></select></label>
+      <button class="btn primary" type="button" id="hmRun">Calcular cuadrícula</button>
+      <span class="fine" id="hmState">5 entrenamientos bastan para las 30 casillas.</span>
+    </div>
+    <div class="card chart-card"><div class="chart" id="hmChart"></div><div class="insight" id="hmRead"></div></div>
+
+    <h3 class="sub-title">4.2 En qué orden ajustar</h3>
+    <div class="order-steps">
+      <div class="card os"><span class="os-n">1</span><h4>Fija el presupuesto</h4><p><b>n_estimators</b> alto (500–1000) + <b>early stopping</b> con paciencia. A partir de aquí, cada configuración encuentra sola su número de rondas.</p></div>
+      <div class="card os"><span class="os-n">2</span><h4>Complejidad del árbol</h4><p><b>max_depth</b> (y <b>min_child_weight</b>). Es lo que más mueve el resultado: define qué interacciones puede captar el modelo.</p></div>
+      <div class="card os"><span class="os-n">3</span><h4>learning_rate</h4><p>Bájalo tanto como te permita el tiempo de cómputo. Es casi siempre un intercambio directo entre cómputo y calidad.</p></div>
+      <div class="card os"><span class="os-n">4</span><h4>Regularización fina</h4><p><b>gamma</b>, <b>lambda</b> y <b>subsample</b>, para pulir el sobreajuste que quede. Son los que menos mueven la aguja: déjalos para el final.</p></div>
+    </div>
+
+    <h3 class="sub-title">4.3 Qué <u>no</u> optimizar</h3>
+    <p class="lead-s">La misma clasificación que usamos en todos los modelos del sitio: <b>fíjalo</b>, <b>decídelo</b> o <b>solo reproducibilidad</b>.</p>
+    <div data-not-tune></div>
+
+    <h3 class="sub-title">4.4 Métodos y presupuesto</h3>
+    <div class="two-col">
+      <article class="card g-card"><h4>Qué cambia respecto a los otros modelos del sitio</h4>
+        <ul>
+          <li>Hay <b>más hiperparámetros que importan</b> (aquí ocho, en la práctica una docena): la búsqueda aleatoria supera al grid con claridad (<a class="cite" href="#ref-bergstra2012gb">Bergstra &amp; Bengio, 2012</a>).</li>
+          <li><b>Early stopping</b> hace que el costo de cada evaluación sea variable: las configuraciones malas se abortan solas y salen baratas.</li>
+          <li>Las rondas son un <b>recurso de baja fidelidad</b> ideal para Hyperband/Successive Halving: evalúa muchas configuraciones con 50 rondas y sigue solo con las prometedoras.</li>
+          <li>La <b>varianza entre semillas</b> suele ser menor que en modelos no supervisados, pero con datos pequeños y subsample &lt; 1 sigue siendo suficiente para confundir dos configuraciones parecidas: compara con 3+ semillas.</li>
+        </ul>
+        <p class="fine">El capítulo 4 de <a href="../isolation-forest/#ch4">Isolation Forest</a> compara grid, random, bayesiana y successive halving con el mismo presupuesto; esos criterios se aplican igual aquí.</p></article>
+      <article class="card g-card"><h4>Ejemplo en Python (XGBoost + Optuna, <a class="cite" href="#ref-akiba2019gb">Akiba et al., 2019</a>)</h4>
+<pre class="code"><code>import optuna, xgboost as xgb
+
+def objective(trial):
+    params = {
+        "objective": "binary:logistic", "eval_metric": "logloss",
+        "learning_rate":    trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+        "max_depth":        trial.suggest_int("max_depth", 2, 8),
+        "min_child_weight": trial.suggest_float("min_child_weight", 0.5, 20, log=True),
+        "gamma":            trial.suggest_float("gamma", 1e-3, 5, log=True),
+        "reg_lambda":       trial.suggest_float("reg_lambda", 0.1, 20, log=True),
+        "subsample":        trial.suggest_float("subsample", 0.5, 1.0),
+    }
+    model = xgb.XGBClassifier(n_estimators=2000, early_stopping_rounds=50, **params)
+    model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
+    # n_estimators NO se busca: early_stopping lo decide para cada configuración
+    trial.set_user_attr("best_round", model.best_iteration)
+    return model.best_score
+
+study = optuna.create_study(direction="minimize")
+study.optimize(objective, n_trials=60)</code></pre>
+        <p class="fine">Detalle importante: <code>n_estimators</code> está <b>fuera</b> del espacio de búsqueda. Incluirlo multiplicaría el costo sin aportar nada, porque el early stopping ya encuentra el óptimo de cada configuración. El número final de rondas se lee después, en <code>best_iteration</code>.</p></article>
+    </div>
+
+    <div class="takeaways" data-takeaways="ch4"></div>
+    <div class="checks" data-checks="ch4"></div>
+    <footer class="ch-next"><a class="btn" href="#ch3">← 3 · Evaluar</a><a class="btn primary" href="#ch5">Siguiente: 5 · Casos reales →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 5 ============================ -->
+  <section class="chapter wrap" id="ch5" aria-labelledby="ch5-t">
+    <header class="ch-head"><span class="ch-num">5</span><div><p class="ch-kicker">Capítulo 5 · ≈ 6 min</p><h2 id="ch5-t">Casos de la vida real</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>decidir cuándo un modelo supervisado como este es mejor opción que uno no supervisado;</li>
+      <li>traducir los hiperparámetros a decisiones concretas de cada dominio;</li>
+      <li>anticipar la trampa típica de cada aplicación.</li>
+    </ul></div>
+    <p class="lead-s">Los datos del laboratorio son sintéticos; estos casos describen situaciones típicas de forma ilustrativa, no resultados medidos.</p>
+    <div class="case-tabs" id="casesTabs" role="tablist" aria-label="Casos"></div>
+    <article class="card case-body" id="caseBody" aria-live="polite"></article>
+    <div class="takeaways" data-takeaways="ch5"></div>
+    <div class="checks" data-checks="ch5"></div>
+    <footer class="ch-next"><a class="btn" href="#ch4">← 4 · Optimizar</a><a class="btn primary" href="#ch6">Siguiente: 6 · Checklist →</a></footer>
+  </section>
+
+  <!-- ============================ CAPÍTULO 6 ============================ -->
+  <section class="chapter wrap" id="ch6" aria-labelledby="ch6-t">
+    <header class="ch-head"><span class="ch-num">6</span><div><p class="ch-kicker">Capítulo 6 · ≈ 4 min</p><h2 id="ch6-t">Checklist, errores comunes y límites</h2></div></header>
+    <div class="ch-goals card"><h3>Al terminar podrás…</h3><ul>
+      <li>seguir un flujo ordenado para entrenar y validar un modelo de boosting;</li>
+      <li>reconocer los errores más frecuentes;</li>
+      <li>saber cuándo el boosting <b>no</b> es la herramienta adecuada.</li>
+    </ul></div>
+    <div class="two-col">
+      <article class="card g-card"><h4>Flujo de trabajo recomendado</h4>
+        <ol class="steps">
+          <li><b>Separa los datos</b> en entrenamiento, validación y prueba — respetando el tiempo si los datos son temporales.</li>
+          <li><b>Entrena una línea base</b> honesta: learning_rate 0.1, max_depth 3, early stopping. Anótala.</li>
+          <li><b>Mira la curva</b> de pérdida antes que cualquier métrica agregada: dice si subajustas, sobreajustas o ninguna de las dos.</li>
+          <li><b>Ajusta la complejidad</b> (max_depth, min_child_weight) con búsqueda aleatoria.</li>
+          <li><b>Baja el learning_rate</b> tanto como el presupuesto de cómputo permita, dejando que early stopping suba las rondas.</li>
+          <li><b>Pule con regularización</b> (gamma, lambda, subsample) solo si queda brecha.</li>
+          <li><b>Repite con 3+ semillas</b> antes de declarar ganador a una configuración.</li>
+          <li><b>Reporta sobre el conjunto de prueba</b>, que no participó en ninguna decisión.</li>
+          <li><b>Monitorea</b> el logloss y la distribución de probabilidades tras desplegar: los datos derivan.</li>
+        </ol></article>
+      <article class="card g-card"><h4>Errores comunes</h4>
+        <ul>
+          <li>Reportar métricas de <b>entrenamiento</b> como si fueran resultados.</li>
+          <li>Buscar <code>n_estimators</code> por fuerza bruta en vez de usar <b>early stopping</b>.</li>
+          <li>Elegir el número de rondas con el mismo conjunto con el que luego se reporta (el resultado queda optimista).</li>
+          <li>Partir datos temporales <b>al azar</b>: el modelo aprende del futuro.</li>
+          <li>Subir <code>max_depth</code> para "que aprenda más" cuando el problema era el learning_rate.</li>
+          <li>Interpretar la <b>importancia</b> de variables como causalidad.</li>
+          <li>Usar la exactitud con clases muy desbalanceadas.</li>
+          <li>Dejar entrar una variable que no existirá en producción (fuga de información): suele delatarse con una importancia sospechosamente alta.</li>
+        </ul>
+        <h4 style="margin-top:14px">Límites del boosting</h4>
+        <ul>
+          <li>Entrenamiento <b>secuencial</b>: no se paraleliza entre árboles como sí ocurre en bagging.</li>
+          <li>Sensible al <b>ruido de etiqueta</b>: al concentrarse en los puntos que falla, puede perseguir errores de etiquetado.</li>
+          <li>Más hiperparámetros que ajustar que un Random Forest, que suele funcionar razonablemente sin tocar casi nada.</li>
+          <li>No extrapola fuera del rango de los datos: la predicción es constante a trozos.</li>
+          <li>En imágenes, audio o texto crudo, las redes profundas son claramente superiores. En tablas, la ventaja sigue siendo de los árboles (<a class="cite" href="#ref-grinsztajn2022">Grinsztajn et al., 2022</a>; <a class="cite" href="#ref-shwartz2022">Shwartz-Ziv &amp; Armon, 2022</a>).</li>
+          <li>Sin etiquetas, esto no aplica: ahí van <a href="../isolation-forest/">Isolation Forest</a> o el <a href="../vae/">VAE</a>.</li>
+        </ul></article>
+    </div>
+    <div class="checks" data-checks="ch6"></div>
+    <footer class="ch-next"><a class="btn" href="#ch5">← 5 · Casos reales</a><a class="btn primary" href="#refs">Bibliografía ↓</a></footer>
+  </section>
+
+  <!-- ============================ BIBLIOGRAFÍA ============================ -->
+  <section class="chapter wrap" id="refs" aria-labelledby="refs-t">
+    <header class="ch-head"><span class="ch-num">★</span><div><p class="ch-kicker">Referencias</p><h2 id="refs-t">Bibliografía</h2></div></header>
+    <p class="lead-s"><b>✔</b> = ficha y contenido consultados en la fuente al preparar este material. Datos menores como páginas o volumen conviene contrastarlos antes de una cita formal. Sin ✔: referencias estándar que no se consultaron directamente en esta revisión.</p>
+    <div class="card refs-card"><ol class="refs-list">
+      <li id="ref-chen2016">✔ Chen, T., &amp; Guestrin, C. (2016). <i>XGBoost: A scalable tree boosting system.</i> Proc. ACM SIGKDD (KDD), 785–794. doi:10.1145/2939672.2939785 — el objetivo regularizado, la fórmula de ganancia y el uso del hessiano que implementa este laboratorio.</li>
+      <li id="ref-friedman2001">✔ Friedman, J. H. (2001). <i>Greedy function approximation: A gradient boosting machine.</i> The Annals of Statistics, 29(5), 1189–1232. — formula el boosting como descenso de gradiente en el espacio de funciones e introduce el <i>shrinkage</i>.</li>
+      <li id="ref-friedman2002">✔ Friedman, J. H. (2002). <i>Stochastic gradient boosting.</i> Computational Statistics &amp; Data Analysis, 38(4), 367–378. — el submuestreo de filas por ronda (<code>subsample</code>).</li>
+      <li id="ref-freund1997">Freund, Y., &amp; Schapire, R. E. (1997). <i>A decision-theoretic generalization of on-line learning and an application to boosting.</i> Journal of Computer and System Sciences, 55(1), 119–139. — AdaBoost, el antecesor.</li>
+      <li id="ref-ke2017">Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., &amp; Liu, T.-Y. (2017). <i>LightGBM: A highly efficient gradient boosting decision tree.</i> Advances in Neural Information Processing Systems 30 (NIPS).</li>
+      <li id="ref-prokhorenkova2018">Prokhorenkova, L., Gusev, G., Vorobev, A., Dorogush, A. V., &amp; Gulin, A. (2018). <i>CatBoost: unbiased boosting with categorical features.</i> Advances in Neural Information Processing Systems 31 (NeurIPS).</li>
+      <li id="ref-grinsztajn2022">✔ Grinsztajn, L., Oyallon, E., &amp; Varoquaux, G. (2022). <i>Why do tree-based models still outperform deep learning on typical tabular data?</i> Advances in Neural Information Processing Systems 35 (NeurIPS), Datasets and Benchmarks Track. <a href="https://arxiv.org/abs/2207.08815">arXiv:2207.08815</a></li>
+      <li id="ref-shwartz2022">Shwartz-Ziv, R., &amp; Armon, A. (2022). <i>Tabular data: Deep learning is not all you need.</i> Information Fusion, 81, 84–90.</li>
+      <li id="ref-niculescu2005">✔ Niculescu-Mizil, A., &amp; Caruana, R. (2005). <i>Predicting good probabilities with supervised learning.</i> Proc. ICML, 625–632. doi:10.1145/1102351.1102430 — el trabajo de referencia sobre calibración de modelos de boosting.</li>
+      <li id="ref-bergstra2012gb">✔ Bergstra, J., &amp; Bengio, Y. (2012). <i>Random search for hyper-parameter optimization.</i> Journal of Machine Learning Research, 13, 281–305.</li>
+      <li id="ref-akiba2019gb">✔ Akiba, T., Sano, S., Yanase, T., Ohta, T., &amp; Koyama, M. (2019). <i>Optuna: A next-generation hyperparameter optimization framework.</i> Proc. ACM SIGKDD (KDD), 2623–2631. doi:10.1145/3292500.3330701</li>
+      <li id="ref-saito2015gb">✔ Saito, T., &amp; Rehmsmeier, M. (2015). <i>The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets.</i> PLoS ONE, 10(3), e0118432. doi:10.1371/journal.pone.0118432</li>
+      <li id="ref-he2014">He, X., Pan, J., Jin, O., Xu, T., Liu, B., Xu, T., Shi, Y., Atallah, A., Herbrich, R., Bowers, S., &amp; Candela, J. Q. (2014). <i>Practical lessons from predicting clicks on ads at Facebook.</i> Proc. ADKDD.</li>
+      <li id="ref-hastie2009">Hastie, T., Tibshirani, R., &amp; Friedman, J. (2009). <i>The Elements of Statistical Learning</i> (2ª ed.). Springer — capítulo 10 (boosting) y 15 (random forests).</li>
+      <li id="ref-probst2019gb">✔ Probst, P., Boulesteix, A.-L., &amp; Bischl, B. (2019). <i>Tunability: Importance of hyperparameters of machine learning algorithms.</i> Journal of Machine Learning Research, 20(53), 1–32. — cuánto se gana ajustando cada hiperparámetro, incluidos los de boosting.</li>
+    </ol></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div><b>ML Hyperparameter Lab</b> · Gradient Boosting al estilo XGBoost implementado desde cero en JavaScript (gradiente, hessiano y objetivo regularizado a mano); se entrena en tu navegador.</div>
+    <div><a href="../../index.html">← Más algoritmos</a> · <a href="#top">Volver arriba ↑</a></div>
+  </div>
+</footer>
+
+<script src="../../assets/js/common.js"></script>
+<script src="gbm.js"></script>
+<script src="data.js"></script>
+<script src="../../assets/js/core/metrics.js"></script>
+<script src="../../assets/js/core/tuning-doc.js"></script>
+<script src="../isolation-forest/charts.js"></script>
+<script src="content.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+<script src="grid.js"></script>
+<script src="../../assets/js/chapters.js"></script>
+</body>
+</html>

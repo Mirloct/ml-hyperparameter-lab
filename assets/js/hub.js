@@ -18,6 +18,14 @@
       <rect x="104" y="46" width="32" height="28" rx="7" fill="var(--accent-wash)" stroke="var(--accent)" stroke-width="1.6"/>
       <g fill="var(--s2)"><circle cx="112" cy="60" r="2.6"/><circle cx="120" cy="56" r="2.6"/><circle cx="128" cy="63" r="2.6"/></g>
       <text x="120" y="92" font-size="9" fill="var(--ink-2)" text-anchor="middle" font-family="var(--font)">espacio latente z</text></svg>`,
+    gbm: `<svg viewBox="0 0 240 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="240" height="120" fill="var(--surface-2)"/>
+      <g stroke="var(--axis)" stroke-width="1.2" fill="none"><path d="M40 22v34M26 40h28"/><path d="M104 22v34M90 44h28"/><path d="M168 22v34M154 47h28"/></g>
+      <g fill="var(--s2)" opacity=".85"><rect x="28" y="26" width="24" height="9" rx="2.5"/><rect x="92" y="32" width="24" height="7" rx="2.5"/><rect x="156" y="36" width="24" height="5" rx="2.5"/></g>
+      <g fill="var(--s1)" opacity=".85"><rect x="28" y="46" width="24" height="9" rx="2.5"/><rect x="92" y="46" width="24" height="7" rx="2.5"/><rect x="156" y="48" width="24" height="5" rx="2.5"/></g>
+      <text x="212" y="44" font-size="13" fill="var(--ink-2)" text-anchor="middle" font-family="var(--font)">+</text>
+      <path d="M24 100q50-26 100-30t92 2" fill="none" stroke="var(--s1)" stroke-width="2.2"/>
+      <path d="M24 102q52-22 96-14t96 22" fill="none" stroke="var(--s2)" stroke-width="2.2" stroke-dasharray="4 3"/>
+      <text x="120" y="116" font-size="9" fill="var(--ink-2)" text-anchor="middle" font-family="var(--font)">rondas de boosting →</text></svg>`,
     generic: `<svg viewBox="0 0 240 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="240" height="120" fill="var(--surface-2)"/>
       <g fill="var(--border-strong)"><circle cx="70" cy="60" r="16"/><circle cx="120" cy="40" r="10"/><circle cx="120" cy="80" r="10"/><circle cx="170" cy="60" r="16"/></g></svg>`,
   };

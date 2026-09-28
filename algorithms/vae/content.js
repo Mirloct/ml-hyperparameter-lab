@@ -4,6 +4,7 @@
   const ML = (window.MLLab = window.MLLab || {});
   const cite = (id, txt) => `<a class="cite" href="#ref-${id}">${txt}</a>`;
   ML.cite = cite;
+  ML.MODEL_NAME = 'el VAE';
 
   /* Conceptos que el verificador de secuencia de lectura (tools/reading-check.js) comprueba:
    * cada uno debe estar PRESENTADO (glosario, encabezado, tabla…) en su primera aparición. */

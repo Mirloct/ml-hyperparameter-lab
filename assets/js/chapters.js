@@ -45,7 +45,7 @@
       $$('button', tabs).forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === id)));
       body.innerHTML = `<header><span class="chip">${c.kicker}</span><h3>${c.name}</h3></header>
         <div class="case-grid">
-          <div><h5>Contexto</h5><p>${c.ctx}</p><h5>Qué buscamos</h5><p>${c.goal}</p><h5>Por qué Isolation Forest</h5><p>${c.why}</p></div>
+          <div><h5>Contexto</h5><p>${c.ctx}</p><h5>Qué buscamos</h5><p>${c.goal}</p><h5>Por qué ${esc(ML.MODEL_NAME || 'este modelo')}</h5><p>${c.why}</p></div>
           <div><h5>Hiperparámetros y decisiones</h5><ul class="keys">${c.keys.map(([k, t]) => `<li><code>${k}</code><span>${t}</span></li>`).join('')}</ul>
             <h5>Qué medir</h5><p>${c.measure}</p><h5>Trampa típica</h5><p class="trap">${c.trap}</p></div>
         </div>

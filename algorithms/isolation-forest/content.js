@@ -5,6 +5,7 @@
   const ML = (window.MLLab = window.MLLab || {});
   const cite = (id, txt) => `<a class="cite" href="#ref-${id}">${txt}</a>`;
   ML.cite = cite;
+  ML.MODEL_NAME = 'Isolation Forest';
 
   /* Conceptos que comprueba tools/reading-check.js (definición antes del primer uso). */
   ML.READING_CONCEPTS = [
